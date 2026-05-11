@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Runtime data — never commit scraped/analysed data
+data/
+/tmp/
+
+# Environment — contains API keys and local config
+.env.local
+.env*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Whisper temp files
+reel-*/
+*.mp4
+*.wav
+agentdb.rvf
+agentdb.rvf.lock

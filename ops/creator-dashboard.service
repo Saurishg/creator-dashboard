@@ -1,0 +1,17 @@
+[Unit]
+Description=Creator Dashboard web app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=work
+WorkingDirectory=/home/work/creator-dashboard
+Environment=NODE_ENV=production
+EnvironmentFile=-/home/work/creator-dashboard/.env.local
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

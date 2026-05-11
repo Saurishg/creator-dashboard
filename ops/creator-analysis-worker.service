@@ -1,0 +1,12 @@
+[Unit]
+Description=Creator Dashboard scheduled analysis worker
+After=creator-dashboard.service
+Wants=creator-dashboard.service
+
+[Service]
+Type=oneshot
+User=work
+WorkingDirectory=/home/work/creator-dashboard
+EnvironmentFile=-/home/work/creator-dashboard/.env.local
+ExecStart=/usr/bin/node /home/work/creator-dashboard/scripts/run-analysis-job.mjs
+TimeoutStartSec=900
