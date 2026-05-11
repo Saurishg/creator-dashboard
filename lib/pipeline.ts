@@ -287,11 +287,18 @@ export async function scrapeAndSaveProfile(username: string, limit = 10) {
 }
 
 export async function scrapeAndSaveCompetitors(handles: string[]) {
-  const directUrls = handles.map((h) => `https://www.instagram.com/${h}/`)
-  const posts = await scrapeInstagramSync<ApifyPost>(
-    { directUrls, resultsType: 'posts', resultsLimit: 5 },
-    180,
-  )
+  // Scrape each account individually — batch scraping times out on 3+ accounts
+  const allPosts: ApifyPost[] = []
+  for (const handle of handles) {
+    try {
+      const posts = await scrapeInstagramSync<ApifyPost>(
+        { directUrls: [`https://www.instagram.com/${handle}/`], resultsType: 'posts', resultsLimit: 8 },
+        120,
+      )
+      allPosts.push(...posts)
+    } catch { /* account blocked or private — continue */ }
+  }
+  const posts = allPosts
   const byOwner = new Map<string, ApifyPost[]>()
   for (const post of posts) {
     if (!post.ownerUsername) continue
@@ -310,7 +317,6 @@ export async function scrapeAndSaveCompetitors(handles: string[]) {
       profilePicUrl: null,
       latestPosts: byOwner.get(h) ?? byOwner.get(h.toLowerCase()) ?? [],
     }))
-    .filter((p) => (p.latestPosts ?? []).length > 0)
 
   const competitors = transformCompetitors(profiles, COMPETITOR_GRADIENTS)
   const trendingAudio = extractTrendingAudio(posts)
