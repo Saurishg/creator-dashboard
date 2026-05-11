@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import type { ReelType } from '@/lib/transform'
 import { recentReels as dummyReels } from '@/lib/dummy-data'
 import type { DashboardReel } from '@/lib/transform'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 const typeStyle: Record<ReelType | 'Other', React.CSSProperties> = {
   Educational:    { background: 'rgba(99,102,241,.12)', color: '#a5b4fc' },
@@ -20,6 +21,8 @@ const barColorMap: Record<string, string> = {
 }
 
 function ReelRow({ reel, index }: { reel: DashboardReel; index: number }) {
+  const isMobile = useIsMobile()
+
   return (
     <div
       style={{
@@ -34,16 +37,22 @@ function ReelRow({ reel, index }: { reel: DashboardReel; index: number }) {
         {reel.emoji}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{
+          fontSize: 13, fontWeight: 600, marginBottom: 4,
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          gap: isMobile ? 8 : 0,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
           {reel.title}
         </div>
-        <div style={{ fontSize: 11.5, color: '#64748b', display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ fontSize: 11.5, color: '#64748b', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
           <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, letterSpacing: 0.3, ...typeStyle[reel.type as ReelType | 'Other'] }}>
             {reel.type}
           </span>
           <span>{reel.date}</span>
-          <span>❤️ {reel.likes}</span>
-          <span>💬 {reel.comments}</span>
+          <span>&#10084;&#65039; {reel.likes}</span>
+          <span>&#128172; {reel.comments}</span>
         </div>
       </div>
       <div style={{ width: 80 }}>

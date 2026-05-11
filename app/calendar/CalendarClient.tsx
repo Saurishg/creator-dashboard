@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import type { GeneratedCalendar, GeneratedPost } from '@/app/api/generate-calendar/route'
 
 const WEEKDAY_ORDER = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -26,7 +27,7 @@ function EmptyState({ onGenerate, generating, progress, statusMsg }: {
         </div>
 
         {generating ? (
-          <div style={{ width: 360 }}>
+          <div style={{ width: '100%', maxWidth: 360 }}>
             <div style={{ fontSize: 13, color: '#a5b4fc', marginBottom: 10 }}>{statusMsg}</div>
             <div style={{ height: 6, background: '#1c2a47', borderRadius: 99, overflow: 'hidden', marginBottom: 6 }}>
               <motion.div animate={{ width: `${progress}%` }} transition={{ duration: 0.5 }}
@@ -46,6 +47,7 @@ function EmptyState({ onGenerate, generating, progress, statusMsg }: {
 
 export default function CalendarClient({ calendar }: { calendar: GeneratedCalendar | null }) {
   const router = useRouter()
+  const isMobile = useIsMobile()
   const [done, setDone] = useState<Set<number>>(new Set())
   const [selected, setSelected] = useState<GeneratedPost | null>(null)
   const [view, setView] = useState<'grid' | 'list'>('list')
@@ -59,6 +61,10 @@ export default function CalendarClient({ calendar }: { calendar: GeneratedCalend
       if (saved) setDone(new Set(JSON.parse(saved)))
     } catch { /* ignore */ }
   }, [])
+
+  useEffect(() => {
+    if (isMobile && view === 'grid') setView('list')
+  }, [isMobile, view])
 
   function toggleDone(day: number) {
     const next = new Set(done)
@@ -130,7 +136,7 @@ export default function CalendarClient({ calendar }: { calendar: GeneratedCalend
   return (
     <>
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', marginBottom: 28, gap: isMobile ? 12 : 0 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px' }}>📅 30-Day Content Calendar</h1>
           <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
@@ -141,12 +147,14 @@ export default function CalendarClient({ calendar }: { calendar: GeneratedCalend
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {(['list', 'grid'] as const).map((v) => (
-            <button key={v} onClick={() => setView(v)} style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: '1px solid #1c2a47', background: view === v ? '#1c2a47' : '#0f1629', color: view === v ? '#a5b4fc' : '#64748b' }}>
-              {v === 'grid' ? '⊞ Grid' : '≡ List'}
-            </button>
+            !isMobile || v !== 'grid' ? (
+              <button key={v} onClick={() => setView(v)} style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: '1px solid #1c2a47', background: view === v ? '#1c2a47' : '#0f1629', color: view === v ? '#a5b4fc' : '#64748b' }}>
+                {v === 'grid' ? '&#8862; Grid' : '&#8801; List'}
+              </button>
+            ) : null
           ))}
           <button onClick={generate} disabled={generating} style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: generating ? 'not-allowed' : 'pointer', border: 'none', background: generating ? '#1c2a47' : 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: generating ? '#64748b' : '#fff' }}>
-            {generating ? '⏳ Generating…' : '↻ Regenerate'}
+            {generating ? '&#8987; Generating…' : '&#8635; Regenerate'}
           </button>
         </div>
       </motion.div>
@@ -215,31 +223,33 @@ export default function CalendarClient({ calendar }: { calendar: GeneratedCalend
       {/* GRID VIEW */}
       {view === 'grid' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, marginBottom: 4 }}>
-            {WEEKDAY_ORDER.map((l) => <div key={l} style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, color: '#64748b', padding: '6px 0' }}>{l}</div>)}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
-            {Array.from({ length: firstDate.getDay() }).map((_, i) => <div key={`pad-${i}`} />)}
-            {Array.from({ length: 30 }).map((_, i) => {
-              const d = new Date(firstDate)
-              d.setDate(firstDate.getDate() + i)
-              const iso = d.toISOString().split('T')[0]
-              const post = posts.find((p) => p.date === iso)
-              const isDone = post ? done.has(post.day) : false
-              return (
-                <motion.div key={i} whileHover={post ? { scale: 1.04 } : {}} onClick={() => post && setSelected(post)}
-                  style={{ minHeight: 76, borderRadius: 10, padding: 8, cursor: post ? 'pointer' : 'default', background: isDone ? 'rgba(16,185,129,.08)' : post ? '#0f1629' : '#080e1a', border: isDone ? '1px solid rgba(16,185,129,.25)' : post ? `1px solid ${post.color}33` : '1px solid #0c1525', transition: 'all .15s' }}>
-                  <div style={{ fontSize: 10, color: '#64748b', marginBottom: 3 }}>{d.getDate()}</div>
-                  {post && (
-                    <>
-                      <div style={{ fontSize: 15, marginBottom: 3 }}>{isDone ? '✅' : post.emoji}</div>
-                      <div style={{ fontSize: 9.5, fontWeight: 700, color: post.color, lineHeight: 1.2 }}>{post.hookType}</div>
-                      <div style={{ fontSize: 9, color: '#64748b', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.topic}</div>
-                    </>
-                  )}
-                </motion.div>
-              )
-            })}
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, marginBottom: 4, minWidth: 560 }}>
+              {WEEKDAY_ORDER.map((l) => <div key={l} style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, color: '#64748b', padding: '6px 0' }}>{l}</div>)}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, minWidth: 560 }}>
+              {Array.from({ length: firstDate.getDay() }).map((_, i) => <div key={`pad-${i}`} />)}
+              {Array.from({ length: 30 }).map((_, i) => {
+                const d = new Date(firstDate)
+                d.setDate(firstDate.getDate() + i)
+                const iso = d.toISOString().split('T')[0]
+                const post = posts.find((p) => p.date === iso)
+                const isDone = post ? done.has(post.day) : false
+                return (
+                  <motion.div key={i} whileHover={post ? { scale: 1.04 } : {}} onClick={() => post && setSelected(post)}
+                    style={{ minHeight: 76, borderRadius: 10, padding: 8, cursor: post ? 'pointer' : 'default', background: isDone ? 'rgba(16,185,129,.08)' : post ? '#0f1629' : '#080e1a', border: isDone ? '1px solid rgba(16,185,129,.25)' : post ? `1px solid ${post.color}33` : '1px solid #0c1525', transition: 'all .15s' }}>
+                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 3 }}>{d.getDate()}</div>
+                    {post && (
+                      <>
+                        <div style={{ fontSize: 15, marginBottom: 3 }}>{isDone ? '&#9989;' : post.emoji}</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: post.color, lineHeight: 1.2 }}>{post.hookType}</div>
+                        <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.topic}</div>
+                      </>
+                    )}
+                  </motion.div>
+                )
+              })}
+            </div>
           </div>
         </motion.div>
       )}
@@ -253,7 +263,7 @@ export default function CalendarClient({ calendar }: { calendar: GeneratedCalend
               style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 200 }} />
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-              style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 440, background: '#0c1220', borderLeft: '1px solid #1c2a47', zIndex: 201, overflowY: 'auto', padding: 28 }}>
+              style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: isMobile ? 0 : 'auto', width: isMobile ? '100vw' : 440, background: '#0c1220', borderLeft: '1px solid #1c2a47', zIndex: 201, overflowY: 'auto', padding: 28 }}>
 
               <button onClick={() => setSelected(null)} style={{ position: 'absolute', top: 16, right: 16, background: '#131d35', border: '1px solid #1c2a47', borderRadius: 8, color: '#64748b', fontSize: 20, cursor: 'pointer', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
 

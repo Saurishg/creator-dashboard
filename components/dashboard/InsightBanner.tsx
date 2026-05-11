@@ -2,10 +2,12 @@
 
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import type { AnalysisResult } from '@/lib/analysis-types'
 
 export default function InsightBanner({ analysis }: { analysis?: AnalysisResult | null }) {
   const router = useRouter()
+  const isMobile = useIsMobile()
   const formula = analysis?.patterns?.winningFormula
   const rec = analysis?.patterns?.recommendations?.[0]
 
@@ -20,7 +22,8 @@ export default function InsightBanner({ analysis }: { analysis?: AnalysisResult 
         borderRadius: 14,
         padding: '18px 22px',
         display: 'flex',
-        alignItems: 'center',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'flex-start' : 'center',
         gap: 16,
         marginBottom: 20,
       }}
@@ -48,7 +51,8 @@ export default function InsightBanner({ analysis }: { analysis?: AnalysisResult 
       <div
         onClick={() => router.push('/analysis')}
         style={{
-          marginLeft: 'auto',
+          marginLeft: isMobile ? 0 : 'auto',
+          alignSelf: isMobile ? 'flex-start' : undefined,
           flexShrink: 0,
           fontSize: 12,
           fontWeight: 600,

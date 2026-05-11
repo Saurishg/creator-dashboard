@@ -46,3 +46,10 @@ body {
   0%, 100% { transform: scaleY(1); }
   50%       { transform: scaleY(0.3); }
 }
+
+.grid-3col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 767px) {
+  .grid-3col { grid-template-columns: 1fr; }
+  .grid-2col { grid-template-columns: 1fr; }
+}

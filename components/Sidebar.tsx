@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 const navMain = [
   { icon: '📊', label: 'Dashboard',      href: '/',               badge: null },
@@ -19,18 +20,21 @@ const navAccount = [
 ]
 
 function NavItem({
-  icon, label, href, badge, isActive,
+  icon, label, href, badge, isActive, onNavigate,
 }: {
-  icon: string; label: string; href: string; badge?: number | null; isActive: boolean
+  icon: string; label: string; href: string; badge?: number | null; isActive: boolean; onNavigate?: () => void
 }) {
+  const isMobile = useIsMobile()
+
   return (
     <Link
       href={href}
+      onClick={() => { if (isMobile) onNavigate?.() }}
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: 10,
-        padding: '10px 12px',
+        padding: '12px 12px',
         borderRadius: 8,
         color: isActive ? '#a5b4fc' : '#94a3b8',
         fontSize: 13.5,
@@ -51,7 +55,7 @@ function NavItem({
             marginLeft: 'auto',
             background: '#6366f1',
             color: '#fff',
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 700,
             padding: '2px 6px',
             borderRadius: 99,
@@ -64,8 +68,9 @@ function NavItem({
   )
 }
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname()
+  const isMobile = useIsMobile()
   const [profile, setProfile] = useState({
     displayName: 'Creator',
     username: 'yourusername',
@@ -95,10 +100,30 @@ export default function Sidebar() {
         padding: '24px 16px',
         position: 'fixed',
         top: 0,
-        left: 0,
+        left: isMobile ? (isOpen ? 0 : -260) : 0,
         zIndex: 100,
+        transition: 'left 0.28s ease',
       }}
     >
+      {isMobile && (
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            background: 'none',
+            border: 'none',
+            color: '#94a3b8',
+            fontSize: 20,
+            cursor: 'pointer',
+            lineHeight: 1,
+          }}
+        >
+          &#10005;
+        </button>
+      )}
+
       {/* Logo */}
       <div
         style={{
@@ -123,11 +148,11 @@ export default function Sidebar() {
             boxShadow: '0 0 20px rgba(99,102,241,.35)',
           }}
         >
-          ⚡
+          &#9889;
         </div>
           <div>
           <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.3px' }}>{profile.brandName}</div>
-          <div style={{ fontSize: 10, color: '#64748b', letterSpacing: '0.5px', fontWeight: 500 }}>
+          <div style={{ fontSize: 11, color: '#64748b', letterSpacing: '0.5px', fontWeight: 500 }}>
             CREATOR INTELLIGENCE
           </div>
         </div>
@@ -152,6 +177,7 @@ export default function Sidebar() {
           key={item.href}
           {...item}
           isActive={pathname === item.href}
+          onNavigate={onClose}
         />
       ))}
 
@@ -176,6 +202,7 @@ export default function Sidebar() {
           key={item.href}
           {...item}
           isActive={pathname === item.href}
+          onNavigate={onClose}
         />
       ))}
 
@@ -211,7 +238,7 @@ export default function Sidebar() {
             <div style={{ fontSize: 13, fontWeight: 600 }}>{profile.displayName}</div>
             <div style={{ fontSize: 11, color: '#64748b' }}>@{profile.username}</div>
           </div>
-          <div style={{ marginLeft: 'auto', fontSize: 14, color: '#64748b' }}>›</div>
+          <div style={{ marginLeft: 'auto', fontSize: 14, color: '#64748b' }}>&#8250;</div>
         </div>
       </div>
     </aside>

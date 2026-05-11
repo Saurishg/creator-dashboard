@@ -75,7 +75,7 @@ function ReelCard({ reel, index }: { reel: ReelBreakdown; index: number }) {
       </div>
 
       {/* hook / body / cta */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+      <div className="grid-3col" style={{ gap: 10 }}>
         {[
           { label: '🎣 Hook', value: reel.hook,  bg: 'rgba(99,102,241,.08)',  border: 'rgba(99,102,241,.2)' },
           { label: '📖 Body', value: reel.body,  bg: 'rgba(16,185,129,.06)',  border: 'rgba(16,185,129,.15)' },
@@ -251,7 +251,7 @@ export default function AnalysisPage() {
           </motion.div>
 
           {/* Pattern grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
+          <div className="grid-2col" style={{ gap: 14, marginBottom: 20 }}>
             <PatternCard title="🎣 Top Hook Types (by performance)" color="#6366f1">
               {p.topHookTypes.map((h, i) => (
                 <div key={h} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -285,7 +285,7 @@ export default function AnalysisPage() {
           </div>
 
           {/* Weaknesses + Recommendations */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 24 }}>
+          <div className="grid-2col" style={{ gap: 14, marginBottom: 24 }}>
             <PatternCard title="⚠️ Content Gaps (what you're missing)" color="#ef4444">
               {p.weaknesses.map((w, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>

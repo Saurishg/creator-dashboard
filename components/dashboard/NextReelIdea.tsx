@@ -17,7 +17,7 @@ function buildIdeaFromAnalysis(analysis: AnalysisResult) {
   return {
     viralScore: 88,
     hook: `"${topHook} hook + ${topCta} CTA — your highest-performing pattern"`,
-    why: `🎯 Based on ${analysis.totalReels} reels analysed. ${p.winningFormula} ${rec ? `Next action: ${rec}` : ''}`,
+    why: `🎯 Based on ${analysis.totalReels} reels analysed. ${p.winningFormula ?? ''} ${rec ? `Next action: ${rec}` : ''}`.trim(),
     tags: [
       { dot: '#8b5cf6', label: `Hook: ${topHook}` },
       { dot: '#10b981', label: `CTA: ${topCta}` },
@@ -27,7 +27,7 @@ function buildIdeaFromAnalysis(analysis: AnalysisResult) {
 }
 
 export default function NextReelIdea({ analysis }: { analysis?: AnalysisResult | null }) {
-  const idea = analysis ? buildIdeaFromAnalysis(analysis) : dummyIdea
+  const idea = analysis?.patterns ? buildIdeaFromAnalysis(analysis) : dummyIdea
   const viralControls = useAnimationControls()
   const viralScore = useCounter(idea.viralScore, 2000, 500)
 

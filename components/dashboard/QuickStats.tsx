@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { useCounter } from '@/hooks/useCounter'
 import { quickStats as dummyStats } from '@/lib/dummy-data'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import type { DashboardStats } from '@/lib/transform'
 
 function StatCard({
@@ -43,6 +44,7 @@ function StatCard({
 }
 
 export default function QuickStats({ liveStats }: { liveStats?: DashboardStats }) {
+  const isMobile = useIsMobile()
   const stats = [
     {
       icon: '📹', iconBg: 'rgba(99,102,241,.12)',
@@ -72,7 +74,7 @@ export default function QuickStats({ liveStats }: { liveStats?: DashboardStats }
   ]
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 20 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 16, marginBottom: 20 }}>
       {stats.map((stat, i) => (
         <StatCard key={stat.label} {...stat} index={i} />
       ))}

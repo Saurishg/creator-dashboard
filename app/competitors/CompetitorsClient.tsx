@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import type { DashboardCompetitor } from '@/lib/transform'
 import type { CompetitorAnalysisResult } from '@/lib/analysis-types'
 
@@ -22,6 +23,7 @@ export default function CompetitorsClient({
   compAnalysis?: CompetitorAnalysisResult
 }) {
   const router = useRouter()
+  const isMobile = useIsMobile()
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [statusMsg, setStatusMsg] = useState('')
@@ -73,7 +75,7 @@ export default function CompetitorsClient({
   return (
     <>
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32 }}>
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', marginBottom: 32, gap: isMobile ? 12 : 0 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px' }}>🔍 Competitor Intel</h1>
           <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
@@ -105,7 +107,7 @@ export default function CompetitorsClient({
       )}
 
       {/* Overview cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${filled.length}, 1fr)`, gap: 16, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${filled.length}, 1fr)`, gap: 16, marginBottom: 20 }}>
         {filled.map((c, i) => (
           <motion.div key={c.handle} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
             style={{ background: '#0f1629', border: '1px solid #1c2a47', borderRadius: 14, padding: 22 }}>
@@ -160,7 +162,7 @@ export default function CompetitorsClient({
                     🏆 <strong>Formula:</strong> {comp.patterns.winningFormula}
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 16 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 14, marginBottom: 16 }}>
                     <div>
                       <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8 }}>Top Hooks</div>
                       {comp.patterns.topHookTypes?.slice(0, 3).map((h) => (
@@ -219,7 +221,8 @@ export default function CompetitorsClient({
       {/* Comparison table */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
         style={{ background: '#0f1629', border: '1px solid #1c2a47', borderRadius: 14, padding: 22 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>📊 Side-by-Side Metrics</div>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>&#128202; Side-by-Side Metrics</div>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
           <thead>
             <tr>
@@ -240,6 +243,7 @@ export default function CompetitorsClient({
             ))}
           </tbody>
         </table>
+        </div>
       </motion.div>
     </>
   )

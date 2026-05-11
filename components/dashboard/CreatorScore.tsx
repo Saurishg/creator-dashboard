@@ -4,6 +4,7 @@ import { motion, useAnimationControls } from 'framer-motion'
 import { useEffect } from 'react'
 import { useCounter } from '@/hooks/useCounter'
 import { creatorScore } from '@/lib/dummy-data'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 const CIRCUMFERENCE = 2 * Math.PI * 70  // ≈ 440
 
@@ -23,6 +24,7 @@ const badgeStyleMap: Record<string, React.CSSProperties> = {
 export default function CreatorScore() {
   const scoreControls = useAnimationControls()
   const score = useCounter(creatorScore.score, 1800, 300)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     const offset = CIRCUMFERENCE - (creatorScore.score / 100) * CIRCUMFERENCE
@@ -43,16 +45,17 @@ export default function CreatorScore() {
         borderRadius: 14,
         padding: 28,
         display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
         alignItems: 'center',
         gap: 36,
       }}
     >
       {/* Score ring */}
-      <div style={{ position: 'relative', width: 160, height: 160, flexShrink: 0 }}>
+      <div style={{ position: 'relative', width: isMobile ? 130 : 160, height: isMobile ? 130 : 160, flexShrink: 0 }}>
         <svg
           viewBox="0 0 160 160"
-          width={160}
-          height={160}
+          width={isMobile ? 130 : 160}
+          height={isMobile ? 130 : 160}
           style={{ transform: 'rotate(-90deg)' }}
         >
           <defs>
