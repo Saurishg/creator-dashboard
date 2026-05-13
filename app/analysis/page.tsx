@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import type { AnalysisResult, ReelBreakdown } from '@/lib/analysis-types'
 
@@ -116,6 +116,17 @@ export default function AnalysisPage() {
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState('')
 
+  const authHeader = { Authorization: `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN ?? ''}` }
+
+  useEffect(() => {
+    fetch('/api/analyze', { headers: authHeader })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json: AnalysisResult | null) => {
+        if (json?.breakdowns?.length) setResult(json)
+      })
+      .catch(() => {})
+  }, [])
+
   async function runAnalysis() {
     setLoading(true)
     setError(null)
@@ -123,7 +134,7 @@ export default function AnalysisPage() {
 
     try {
       // Try cached first
-      const cached = await fetch('/api/analyze')
+      const cached = await fetch('/api/analyze', { headers: authHeader })
       if (cached.ok) {
         const json: AnalysisResult = await cached.json()
         if (json.breakdowns?.length) {
@@ -134,13 +145,13 @@ export default function AnalysisPage() {
       }
 
       setStep('Downloading videos and transcribing with Whisper medium…')
-      const res = await fetch('/api/analyze', { method: 'POST' })
+      const res = await fetch('/api/analyze', { method: 'POST', headers: authHeader })
       const json = await res.json()
 
       if (!res.ok || json.error) {
         setError(json.error ?? 'Analysis failed')
       } else {
-        const full = await fetch('/api/analyze')
+        const full = await fetch('/api/analyze', { headers: authHeader })
         if (full.ok) {
           const fullJson: AnalysisResult = await full.json()
           setResult(fullJson)
@@ -162,11 +173,11 @@ export default function AnalysisPage() {
     setError(null)
     setStep('Re-scraping and re-transcribing…')
     try {
-      const res = await fetch('/api/analyze', { method: 'POST' })
+      const res = await fetch('/api/analyze', { method: 'POST', headers: authHeader })
       const json = await res.json()
       if (!res.ok || json.error) setError(json.error ?? 'Failed')
       else {
-        const full = await fetch('/api/analyze')
+        const full = await fetch('/api/analyze', { headers: authHeader })
         if (full.ok) {
           const fullJson: AnalysisResult = await full.json()
           setResult(fullJson)

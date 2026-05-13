@@ -5,6 +5,7 @@ export interface ReelBreakdown {
   likes: number
   comments: number
   transcript: string
+  caption?: string
   hook: string           // exact first line / opening seconds
   body: string           // main value delivery
   cta: string            // closing ask

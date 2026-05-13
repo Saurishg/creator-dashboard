@@ -4,7 +4,7 @@ const token = process.env.API_AUTH_TOKEN || ''
 const headers = { 'Content-Type': 'application/json' }
 if (token) headers.Authorization = `Bearer ${token}`
 
-const res = await fetch(`${baseUrl.replace(/\/$/, '')}/api/jobs/analyze`, {
+const res = await fetch(`${baseUrl.replace(/\/$/, '')}/api/analyze`, {
   method: 'POST',
   headers,
   body: JSON.stringify({}),

@@ -4,6 +4,8 @@ import { transformCompetitors, extractTrendingAudio } from '@/lib/transform'
 import { writeCache } from '@/lib/cache'
 import { requireApiAuth } from '@/lib/auth'
 
+export const maxDuration = 300
+
 const COMPETITOR_GRADIENTS = [
   'linear-gradient(135deg,#f59e0b,#ef4444)',
   'linear-gradient(135deg,#6366f1,#8b5cf6)',
@@ -30,17 +32,16 @@ export async function POST(req: Request) {
 
     const byOwner = new Map<string, ApifyPost[]>()
     for (const post of posts) {
-      const bucket = byOwner.get(post.ownerUsername) ?? []
+      const key = post.ownerUsername?.toLowerCase()
+      if (!key) continue
+      const bucket = byOwner.get(key) ?? []
       bucket.push(post)
-      byOwner.set(post.ownerUsername, bucket)
+      byOwner.set(key, bucket)
     }
 
     const profiles: ApifyProfile[] = handles
       .map((handle) => {
-        const ownerPosts =
-          byOwner.get(handle) ??
-          byOwner.get(handle.toLowerCase()) ??
-          []
+        const ownerPosts = byOwner.get(handle.toLowerCase()) ?? []
         return {
           username:       handle,
           fullName:       ownerPosts[0]?.ownerFullName ?? null,

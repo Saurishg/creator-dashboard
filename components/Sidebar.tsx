@@ -7,8 +7,8 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 
 const navMain = [
   { icon: '📊', label: 'Dashboard',      href: '/',               badge: null },
-  { icon: '🔍', label: 'Competitors',    href: '/competitors',    badge: 3    },
-  { icon: '💡', label: 'Reel Ideas',     href: '/reel-ideas',     badge: 5    },
+  { icon: '🔍', label: 'Competitors',    href: '/competitors',    badge: null },
+  { icon: '💡', label: 'Reel Ideas',     href: '/reel-ideas',     badge: null },
   { icon: '🎵', label: 'Trending Audio', href: '/trending-audio', badge: null },
   { icon: '🧠', label: 'Content DNA',    href: '/analysis',       badge: null },
 ]
@@ -20,12 +20,10 @@ const navAccount = [
 ]
 
 function NavItem({
-  icon, label, href, badge, isActive, onNavigate,
+  icon, label, href, badge, isActive, isMobile, onNavigate,
 }: {
-  icon: string; label: string; href: string; badge?: number | null; isActive: boolean; onNavigate?: () => void
+  icon: string; label: string; href: string; badge?: number | null; isActive: boolean; isMobile: boolean; onNavigate?: () => void
 }) {
-  const isMobile = useIsMobile()
-
   return (
     <Link
       href={href}
@@ -78,7 +76,10 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
   })
 
   useEffect(() => {
-    fetch('/api/config')
+    const headers: Record<string, string> = {}
+    const token = process.env.NEXT_PUBLIC_API_AUTH_TOKEN
+    if (token) headers.Authorization = `Bearer ${token}`
+    fetch('/api/config', { headers })
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         if (data?.profile) setProfile(data.profile)
@@ -177,6 +178,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
           key={item.href}
           {...item}
           isActive={pathname === item.href}
+          isMobile={isMobile}
           onNavigate={onClose}
         />
       ))}
@@ -202,6 +204,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
           key={item.href}
           {...item}
           isActive={pathname === item.href}
+          isMobile={isMobile}
           onNavigate={onClose}
         />
       ))}

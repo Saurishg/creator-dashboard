@@ -10,7 +10,9 @@ export interface DashboardReel {
   type: ReelType
   date: string
   likes: string
+  likesRaw: number
   comments: string
+  commentsRaw: number
   views: string
   viewsRaw: number
   perfPct: number       // 0–100, relative to best reel in the set
@@ -125,7 +127,9 @@ export function transformReels(posts: ApifyPost[]): DashboardReel[] {
       type,
       date:          relativeDate(post.timestamp),
       likes:         formatNumber(post.likesCount),
+      likesRaw:      post.likesCount,
       comments:      formatNumber(post.commentsCount),
+      commentsRaw:   post.commentsCount,
       views:         formatNumber(views),
       viewsRaw:      views,
       perfPct:       pct,
@@ -147,13 +151,16 @@ export function parseFormattedNumber(s: string): number {
 
 export function computeStats(reels: DashboardReel[]): DashboardStats {
   const totalReels = reels.length
-  const avgViews   = totalReels > 0
-    ? Math.round(reels.reduce((s, r) => s + r.viewsRaw, 0) / totalReels)
-    : 0
-  const totalLikes    = reels.reduce((s, r) => s + parseFormattedNumber(r.likes), 0)
-  const totalComments = reels.reduce((s, r) => s + parseFormattedNumber(r.comments), 0)
-  const engRate = avgViews > 0
-    ? parseFloat(((totalLikes + totalComments) / (totalReels * avgViews) * 100).toFixed(1))
+  if (totalReels === 0) {
+    return { totalReels: 0, avgViews: 0, bestPostingTime: 'Tue 7PM', engagementRate: 0 }
+  }
+
+  const totalViews    = reels.reduce((s, r) => s + r.viewsRaw, 0)
+  const totalLikes    = reels.reduce((s, r) => s + (r.likesRaw ?? 0), 0)
+  const totalComments = reels.reduce((s, r) => s + (r.commentsRaw ?? 0), 0)
+  const avgViews      = Math.round(totalViews / totalReels)
+  const engRate       = totalViews > 0
+    ? parseFloat((((totalLikes + totalComments) / totalViews) * 100).toFixed(1))
     : 0
 
   return {
@@ -234,8 +241,8 @@ export function extractTrendingAudio(posts: ApifyPost[]): DashboardAudio[] {
   return sorted.map((t, i) => ({
     name:       t.artist ? `${t.song} — ${t.artist}` : t.song,
     sub:        `${t.count} reel${t.count !== 1 ? 's' : ''} in your niche`,
-    badge:      badges[i],
-    badgeColor: colors[i],
-    delays:     WAVE_DELAY_SETS[i],
+    badge:      badges[i] ?? '🎵 Audio',
+    badgeColor: colors[i] ?? '#6366f1',
+    delays:     WAVE_DELAY_SETS[i] ?? WAVE_DELAY_SETS[0],
   }))
 }

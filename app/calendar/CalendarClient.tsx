@@ -149,12 +149,12 @@ export default function CalendarClient({ calendar }: { calendar: GeneratedCalend
           {(['list', 'grid'] as const).map((v) => (
             !isMobile || v !== 'grid' ? (
               <button key={v} onClick={() => setView(v)} style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: '1px solid #1c2a47', background: view === v ? '#1c2a47' : '#0f1629', color: view === v ? '#a5b4fc' : '#64748b' }}>
-                {v === 'grid' ? '&#8862; Grid' : '&#8801; List'}
+                {v === 'grid' ? '⊞ Grid' : '≡ List'}
               </button>
             ) : null
           ))}
           <button onClick={generate} disabled={generating} style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: generating ? 'not-allowed' : 'pointer', border: 'none', background: generating ? '#1c2a47' : 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: generating ? '#64748b' : '#fff' }}>
-            {generating ? '&#8987; Generating…' : '&#8635; Regenerate'}
+            {generating ? '⌛ Generating…' : '↻ Regenerate'}
           </button>
         </div>
       </motion.div>
@@ -241,7 +241,7 @@ export default function CalendarClient({ calendar }: { calendar: GeneratedCalend
                     <div style={{ fontSize: 10, color: '#64748b', marginBottom: 3 }}>{d.getDate()}</div>
                     {post && (
                       <>
-                        <div style={{ fontSize: 15, marginBottom: 3 }}>{isDone ? '&#9989;' : post.emoji}</div>
+                        <div style={{ fontSize: 15, marginBottom: 3 }}>{isDone ? '✅' : post.emoji}</div>
                         <div style={{ fontSize: 10, fontWeight: 700, color: post.color, lineHeight: 1.2 }}>{post.hookType}</div>
                         <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.topic}</div>
                       </>

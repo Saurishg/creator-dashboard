@@ -79,59 +79,38 @@ async function analyseWithGPT(
   const profile = readCreatorProfile()
   const handle = creatorHandle(profile)
 
-  const ownReelsText = partials.map((r) =>
-    `REEL ${r.reelId}\nViews: ${r.views} | Likes: ${r.likes} | Comments: ${r.comments}\nTranscript:\n${r.transcript || '(no transcript)'}\n---`
-  ).join('\n\n')
+  const ownReelsText = partials.map((r) => {
+    const cap = (r as { caption?: string }).caption?.trim()
+    return `REEL ${r.reelId} | Views:${r.views} | Caption: ${cap || '(none)'}`
+  }).join('\n')
 
-  const competitorSection = competitorTranscripts.length > 0
-    ? `\n\nCOMPETITOR REELS (for comparison — do NOT include in "individual" array, use only for pattern analysis):\n` +
+  const competitorSummary = competitorTranscripts.length > 0
+    ? `\nCOMPETITOR context (for patterns only — NOT in individual array):\n` +
       competitorTranscripts.map((r) =>
-        `@${r.handle} | Views: ${r.views} | Likes: ${r.likes}\nHook: ${r.hook || '—'}\nTranscript: ${r.transcript || '(no transcript)'}\n---`
-      ).join('\n\n')
+        `@${r.handle} | Views:${r.views} | Caption: ${(r.transcript || '').slice(0, 80)}`
+      ).join('\n')
     : ''
 
   const completion = await openai.chat.completions.create({
     model: LOCAL_MODEL,
+    max_tokens: 4000,
     messages: [
       {
         role: 'system',
-        content: `You are an expert Instagram content strategist specialising in ${profile.contentNiche}.`,
+        content: `You are an Instagram content strategist for ${profile.contentNiche} creators.`,
       },
       {
         role: 'user',
-        content: `Analyse these ${partials.length} Instagram Reels from ${handle}, a creator focused on ${profile.contentNiche}.${competitorTranscripts.length > 0 ? ` You also have ${competitorTranscripts.length} competitor reels to compare against.` : ''}
+        content: `Analyse ${partials.length} reels from ${handle} (lifestyle/fashion/music creator — captions ARE the hooks, transcripts are song lyrics).
 
-For EACH of ${handle}'s reels extract:
-- hook: exact opening line (first 2-3 sentences)
-- body: core value delivery
-- cta: closing call-to-action
-- hookType: one of "Bold claim"|"Shocking number"|"Question"|"Story opener"|"Warning/Don't"|"Contrarian"|"Social proof"|"Future promise"
-- emotionalTrigger: one of "Curiosity"|"FOMO"|"Authority"|"Social proof"|"Aspiration"|"Excitement"
+For EACH reel return reelId (EXACTLY as shown), hook (= caption text), body, cta, hookType (Bold claim|Shocking number|Question|Story opener|Warning/Don't|Contrarian|Social proof|Future promise), emotionalTrigger (Curiosity|FOMO|Authority|Social proof|Aspiration|Excitement).
 
-Then analyse ALL reels together${competitorTranscripts.length > 0 ? ', comparing against competitor patterns' : ''}:
-- topHookTypes: hook types ranked by freq in high-view reels (>50K)
-- topCTAFormats: CTA patterns most used
-- commonBodyStructure: structural pattern repeated most
-- bestPerformingPattern: single pattern most correlated with high views
-- weaknesses: 3 content gaps vs competitors (be specific about what competitors do that ${handle} doesn't)
-- recommendations: 5 specific actionable next steps based on what's working for competitors (very specific, not generic)
-- winningFormula: distil viral formula as one template (e.g. "[Hook] → [proof] → [CTA]")
-- avgEngagementByHookType: map each hookType to avg engagement score
+Also return patterns: topHookTypes (array), topCTAFormats (array), commonBodyStructure, bestPerformingPattern, weaknesses (3 items), recommendations (5 items), winningFormula, avgEngagementByHookType (object).
 
-${competitorTranscripts.length > 0 ? `Also return "competitorInsights" — one entry per competitor handle with:
-- handle: their @handle
-- reelsAnalysed: number of their reels you received
-- topHookTypes: their top 2-3 hook types by frequency
-- topCTAFormats: their top 1-2 CTA formats
-- winningPattern: their single best-performing pattern (hook type + body structure + CTA)
-- avgViews: average views across their reels (compute from transcript metadata)
-- whatIsWorking: one plain-English sentence summarising WHY their content is getting views
+Return ONLY valid JSON: {"individual":[{"reelId":"...","hook":"...","body":"...","cta":"...","hookType":"...","emotionalTrigger":"..."}],"patterns":{"topHookTypes":[],"topCTAFormats":[],"commonBodyStructure":"...","bestPerformingPattern":"...","weaknesses":[],"recommendations":[],"winningFormula":"...","avgEngagementByHookType":{}}}
 
-` : ''}Return ONLY valid JSON:
-{"individual":[{"reelId":"...","hook":"...","body":"...","cta":"...","hookType":"...","emotionalTrigger":"..."}],"patterns":{"topHookTypes":[],"topCTAFormats":[],"commonBodyStructure":"...","bestPerformingPattern":"...","weaknesses":[],"recommendations":[],"winningFormula":"...","avgEngagementByHookType":{}}${competitorTranscripts.length > 0 ? ',"competitorInsights":[{"handle":"...","reelsAnalysed":0,"topHookTypes":[],"topCTAFormats":[],"winningPattern":"...","avgViews":0,"whatIsWorking":"..."}]' : ''}}
-
-${handle}'s Reels:
-${ownReelsText}${competitorSection}`,
+Reels:
+${ownReelsText}${competitorSummary}`,
       },
     ],
     response_format: { type: 'json_object' },
@@ -256,8 +235,9 @@ ${reelsText}`,
       gptResult = parseJsonObject(completion.choices[0]?.message?.content ?? '{}', gptResult)
     } catch { /* use empty result */ }
 
+    const indivList = Array.isArray(gptResult.individual) ? gptResult.individual : []
     const breakdowns: ReelBreakdown[] = partials.map((p) => {
-      const gpt = gptResult.individual.find((g) => g.reelId === p.reelId)
+      const gpt = indivList.find((g) => g.reelId === p.reelId)
       return { ...p, hook: gpt?.hook ?? '', body: gpt?.body ?? '', cta: gpt?.cta ?? '', hookType: gpt?.hookType ?? 'Other', emotionalTrigger: gpt?.emotionalTrigger ?? 'Curiosity' }
     })
 
@@ -302,20 +282,21 @@ export async function scrapeAndSaveCompetitors(handles: string[]) {
   const byOwner = new Map<string, ApifyPost[]>()
   for (const post of posts) {
     if (!post.ownerUsername) continue
-    const bucket = byOwner.get(post.ownerUsername) ?? []
+    const key = post.ownerUsername.toLowerCase()
+    const bucket = byOwner.get(key) ?? []
     bucket.push(post)
-    byOwner.set(post.ownerUsername, bucket)
+    byOwner.set(key, bucket)
   }
   const profiles: ApifyProfile[] = handles
     .map((h) => ({
       username: h,
-      fullName: (byOwner.get(h) ?? [])[0]?.ownerFullName ?? null,
+      fullName: (byOwner.get(h.toLowerCase()) ?? [])[0]?.ownerFullName ?? null,
       biography: null,
       followersCount: 0,
       followingCount: 0,
       postsCount: 0,
       profilePicUrl: null,
-      latestPosts: byOwner.get(h) ?? byOwner.get(h.toLowerCase()) ?? [],
+      latestPosts: byOwner.get(h.toLowerCase()) ?? [],
     }))
 
   const competitors = transformCompetitors(profiles, COMPETITOR_GRADIENTS)
@@ -355,6 +336,7 @@ async function transcribePosts(
           likes:           post.likesCount,
           comments:        post.commentsCount,
           transcript,
+          caption:         post.caption ?? '',
           engagementScore: engagementScore(post.videoViewCount ?? 0, post.likesCount, post.commentsCount),
         }
       }),
@@ -416,7 +398,10 @@ export async function transcribeAndAnalyse(
   }
 
   // 3. phi4 analysis with both own + competitor transcripts
-  const { individual, patterns, competitorInsights } = await analyseWithGPT(partials, competitorTranscripts)
+  const gptResult = await analyseWithGPT(partials, competitorTranscripts)
+  const individual = Array.isArray(gptResult.individual) ? gptResult.individual : []
+  const patterns = gptResult.patterns
+  const competitorInsights = gptResult.competitorInsights
 
   const breakdowns: ReelBreakdown[] = partials.map((p) => {
     const gpt = individual.find((g) => g.reelId === p.reelId)
@@ -434,7 +419,11 @@ export async function transcribeAndAnalyse(
     analysedAt: new Date().toISOString(),
     totalReels: breakdowns.length,
     breakdowns,
-    patterns,
+    patterns: patterns ?? {
+      topHookTypes: [], topCTAFormats: [], commonBodyStructure: '',
+      bestPerformingPattern: '', weaknesses: [], recommendations: [],
+      winningFormula: '', avgEngagementByHookType: {},
+    },
     ...(competitorInsights?.length ? { competitorInsights } : {}),
   }
   writeCache('analysis.json', result)

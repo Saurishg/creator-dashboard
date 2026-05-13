@@ -113,7 +113,7 @@ content_dashboard/
 
 ## Streamlined Bot Architecture
 
-The expensive work is centralized in `lib/jobs.ts` and protected by a filesystem lock under `data/locks/`. Both `/api/setup` and `/api/jobs/analyze` use the same job runner, so overlapping runs do not duplicate scraping or spend extra API credits.
+The expensive work is centralized in `lib/jobs.ts` and protected by a filesystem lock under `data/locks/`. Both `/api/setup` and `/api/analyze` use the same job runner, so overlapping runs do not duplicate scraping or spend extra API credits.
 
 For a systemd/FraqtoOS deployment:
 
@@ -127,7 +127,7 @@ sudo systemctl enable --now creator-dashboard.service
 sudo systemctl enable --now creator-analysis-worker.timer
 ```
 
-The scheduled worker calls `/api/jobs/analyze`, which lets the dashboard stay responsive while the worker handles scrape/transcribe/analyse runs on a timer.
+The scheduled worker calls `/api/analyze`, which lets the dashboard stay responsive while the worker handles scrape/transcribe/analyse runs on a timer.
 
 ## Data & Privacy
 

@@ -43,18 +43,17 @@ export async function GET(req: Request) {
     // Group posts by ownerUsername, preserving handle order
     const byOwner = new Map<string, ApifyPost[]>()
     for (const post of posts) {
-      const bucket = byOwner.get(post.ownerUsername) ?? []
+      const key = post.ownerUsername?.toLowerCase()
+      if (!key) continue
+      const bucket = byOwner.get(key) ?? []
       bucket.push(post)
-      byOwner.set(post.ownerUsername, bucket)
+      byOwner.set(key, bucket)
     }
 
     // Build synthetic profiles; skip handles that returned no posts
     const profiles: ApifyProfile[] = handles
       .map((handle) => {
-        const ownerPosts =
-          byOwner.get(handle) ??
-          byOwner.get(handle.toLowerCase()) ??
-          []
+        const ownerPosts = byOwner.get(handle.toLowerCase()) ?? []
         return {
           username:       handle,
           fullName:       ownerPosts[0]?.ownerFullName ?? null,

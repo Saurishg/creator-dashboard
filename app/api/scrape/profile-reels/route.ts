@@ -4,6 +4,8 @@ import { transformReels, computeStats } from '@/lib/transform'
 import { writeCache } from '@/lib/cache'
 import { requireApiAuth } from '@/lib/auth'
 
+export const maxDuration = 300
+
 export async function POST(req: Request) {
   const auth = requireApiAuth(req)
   if (auth) return auth

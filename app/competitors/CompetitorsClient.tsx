@@ -62,6 +62,7 @@ export default function CompetitorsClient({
             const msg = JSON.parse(line.slice(5))
             if (msg.step) setStatusMsg(msg.step)
             if (msg.progress) setProgress(msg.progress)
+            if (msg.error) { setError(msg.error); setRunning(false); return }
             if (msg.done) { router.refresh(); setRunning(false) }
           } catch { /* ignore */ }
         }

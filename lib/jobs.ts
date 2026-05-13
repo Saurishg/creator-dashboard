@@ -30,8 +30,9 @@ export async function withJobLock<T>(name: string, fn: () => Promise<T>): Promis
   try {
     fd = fs.openSync(lockPath, 'wx')
     fs.writeFileSync(fd, JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }))
-  } catch {
-    // Check if existing lock is stale (older than 10 minutes)
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
+    // Lock file exists — check if stale (older than 10 minutes)
     try {
       const lockContent = fs.readFileSync(lockPath, 'utf-8')
       const { startedAt } = JSON.parse(lockContent) as { startedAt: string }
@@ -45,6 +46,8 @@ export async function withJobLock<T>(name: string, fn: () => Promise<T>): Promis
       }
     } catch (inner) {
       if ((inner as Error).message?.includes('already running')) throw inner
+      // Corrupt lock file — remove and retry once
+      try { fs.unlinkSync(lockPath) } catch { /* ignore */ }
       throw new Error(`${name} is already running`)
     }
   }

@@ -24,7 +24,9 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = requireApiAuth(req)
+  if (auth) return auth
   const cached = readCache<AnalysisResult>('analysis.json')
   if (cached) return NextResponse.json(cached)
   return NextResponse.json({ error: 'No analysis yet — click Analyse' }, { status: 404 })

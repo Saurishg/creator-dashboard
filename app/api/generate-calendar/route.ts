@@ -141,7 +141,6 @@ Return ONLY valid JSON array (no markdown, no explanation):
         max_tokens: 8000,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.4,
-        response_format: { type: 'json_object' as const },
       })
 
       send({ step: 'Parsing calendar ideas…', progress: 80 })
