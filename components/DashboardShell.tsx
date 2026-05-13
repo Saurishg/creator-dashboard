@@ -2,6 +2,7 @@
 
 import Header from '@/components/dashboard/Header'
 import InsightBanner from '@/components/dashboard/InsightBanner'
+import PerformanceAlerts from '@/components/dashboard/PerformanceAlerts'
 import QuickStats from '@/components/dashboard/QuickStats'
 import CreatorScore from '@/components/dashboard/CreatorScore'
 import CompetitorIntel from '@/components/dashboard/CompetitorIntel'
@@ -28,6 +29,7 @@ export default function DashboardShell({ username, reels, stats, competitors, tr
     <>
       <Header username={username} analysedAt={analysis?.analysedAt} />
       <InsightBanner analysis={analysis} />
+      <PerformanceAlerts reels={reels} />
       <QuickStats liveStats={stats ?? undefined} />
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.3fr 1fr', gap: 20, marginBottom: 20 }}>

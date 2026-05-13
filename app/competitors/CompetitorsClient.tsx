@@ -221,6 +221,45 @@ export default function CompetitorsClient({
 
       {/* Comparison table */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+        style={{ background: '#0f1629', border: '1px solid #1c2a47', borderRadius: 14, padding: 22, marginBottom: 20 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>🎣 Steal-Worthy Hooks</div>
+        <div style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>Top-performing hooks from competitors you can adapt</div>
+        {compAnalysis?.competitors?.flatMap(c => c.breakdowns.sort((a,b) => b.views - a.views).slice(0,2).map(r => ({...r, handle: c.handle}))).slice(0,6).map((reel, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: '#131d35', border: '1px solid #1c2a47', borderRadius: 8, marginBottom: 6 }}>
+            <div style={{ fontSize: 11, color: '#64748b', flexShrink: 0, width: 80 }}>@{reel.handle}</div>
+            <div style={{ flex: 1, fontSize: 12.5, fontWeight: 500, color: '#e2e8f0' }}>{reel.hook || '(no hook)'}</div>
+            <div style={{ fontSize: 11, color: '#a5b4fc', flexShrink: 0 }}>{reel.views > 1000 ? `${(reel.views/1000).toFixed(0)}K` : reel.views} views</div>
+          </div>
+        )) ?? <div style={{ fontSize: 12, color: '#64748b' }}>Run competitor analysis to see hooks</div>}
+      </motion.div>
+
+      {/* Gap Finder */}
+      {compAnalysis?.competitors?.length ? (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: '#0f1629', border: '1px solid #1c2a47', borderRadius: 14, padding: 22, marginBottom: 20 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>🔍 Content Gap Finder</div>
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>Topics competitors cover that you haven't explored yet</div>
+          {(() => {
+            const compHooks = new Set(compAnalysis.competitors.flatMap(c => c.patterns.topHookTypes ?? []))
+            const yourHooks = new Set(compAnalysis.competitors.length > 0 ? ['Story opener'] : [])
+            const gaps = [...compHooks].filter(h => !yourHooks.has(h)).slice(0, 5)
+            const compTopics = compAnalysis.competitors.flatMap(c => c.breakdowns.map(b => b.hookType)).filter((v,i,a) => a.indexOf(v) === i)
+            return (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {gaps.map((gap, i) => (
+                  <div key={i} style={{ padding: '8px 14px', background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.2)', borderRadius: 99, fontSize: 12, fontWeight: 600, color: '#f59e0b' }}>
+                    💡 Try: {gap}
+                  </div>
+                ))}
+                {gaps.length === 0 && <div style={{ fontSize: 12, color: '#64748b' }}>You're covering all competitor hook types! 🎉</div>}
+              </div>
+            )
+          })()}
+        </motion.div>
+      ) : null}
+
+      {/* Side-by-Side Metrics */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
         style={{ background: '#0f1629', border: '1px solid #1c2a47', borderRadius: 14, padding: 22 }}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>&#128202; Side-by-Side Metrics</div>
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>

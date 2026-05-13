@@ -1,14 +1,14 @@
-'use client'
+export const dynamic = 'force-dynamic'
 
-import { motion } from 'framer-motion'
+import { readCache } from '@/lib/cache'
+import type { AnalysisResult } from '@/lib/analysis-types'
+import type { DashboardReel } from '@/lib/transform'
+import GrowthClient from './GrowthClient'
+
+interface ProfileCache { reels: DashboardReel[]; stats: { totalReels: number; avgViews: number; engagementRate: number }; scrapedAt?: string }
 
 export default function GrowthPage() {
-  return (
-    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px', marginBottom: 8 }}>
-        📈 Growth Tracker
-      </h1>
-      <p style={{ fontSize: 13, color: '#64748b' }}>Coming soon — track your follower growth over time.</p>
-    </motion.div>
-  )
+  const analysis = readCache<AnalysisResult>('analysis.json')
+  const profileCache = readCache<ProfileCache>('profile-reels.json')
+  return <GrowthClient analysis={analysis ?? null} reels={profileCache?.reels ?? []} />
 }
