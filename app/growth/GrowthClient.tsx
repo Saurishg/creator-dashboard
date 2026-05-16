@@ -1,9 +1,12 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import type { AnalysisResult } from '@/lib/analysis-types'
 import type { DashboardReel } from '@/lib/transform'
+
+const FOLLOWER_STORAGE_KEY = 'follower-history-v1'
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 const HOURS = Array.from({length:24},(_,i)=>i)
@@ -120,6 +123,121 @@ function EngagementHeatmap({ analysis }: { analysis: AnalysisResult | null }) {
   )
 }
 
+interface FollowerSnapshot { date: string; followers: number }
+
+function FollowerGrowthTracker() {
+  const [history, setHistory] = useState<FollowerSnapshot[]>([])
+  const [input, setInput] = useState('')
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(FOLLOWER_STORAGE_KEY)
+      if (stored) setHistory(JSON.parse(stored))
+    } catch { /* ignore */ }
+    setHydrated(true)
+  }, [])
+
+  function addSnapshot() {
+    const val = parseInt(input.replace(/[^0-9]/g, ''), 10)
+    if (!val || val <= 0) return
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    const next = [...history.filter((h) => h.date !== today), { date: today, followers: val }]
+      .slice(-8)
+    setHistory(next)
+    try { localStorage.setItem(FOLLOWER_STORAGE_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+    setInput('')
+  }
+
+  const data = history.length > 0 ? history : []
+  const growth = data.length >= 2 ? data[data.length - 1].followers - data[0].followers : null
+  const pct = growth !== null && data[0].followers > 0
+    ? ((growth / data[0].followers) * 100).toFixed(1) : null
+  const maxF = data.length > 0 ? Math.max(...data.map((d) => d.followers), 1) : 1
+
+  return (
+    <div style={{ background: '#0f1629', border: '1px solid #1c2a47', borderRadius: 14, padding: 22, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>👥 Follower Growth</div>
+          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+            {data.length === 0 ? 'Log your first snapshot below' : `${data.length} snapshots tracked`}
+          </div>
+        </div>
+        {growth !== null && pct !== null && (
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: growth >= 0 ? '#10b981' : '#ef4444' }}>
+              {growth >= 0 ? '+' : ''}{growth.toLocaleString()}
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>{growth >= 0 ? '+' : ''}{pct}% growth</div>
+          </div>
+        )}
+      </div>
+
+      {data.length > 0 ? (
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 80, marginBottom: 16 }}>
+          {data.map((d, i) => (
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <div style={{
+                width: '100%',
+                background: i === data.length - 1 ? '#6366f1' : '#1c2a47',
+                borderRadius: '4px 4px 0 0',
+                height: `${(d.followers / maxF) * 70}px`,
+                transition: 'height .5s ease',
+                minHeight: 4,
+              }} />
+              <div style={{ fontSize: 9, color: '#64748b', whiteSpace: 'nowrap' }}>{d.date}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: '#334155' }}>No data yet — add your first snapshot</div>
+        </div>
+      )}
+
+      {/* Manual entry */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addSnapshot()}
+          placeholder="Enter current follower count…"
+          type="number"
+          min="0"
+          disabled={!hydrated}
+          style={{
+            flex: 1, padding: '9px 14px', background: '#131d35',
+            border: '1px solid #1c2a47', borderRadius: 8,
+            color: '#f0f4ff', fontSize: 13, outline: 'none',
+          }}
+        />
+        <button
+          onClick={addSnapshot}
+          disabled={!hydrated || !input.trim()}
+          style={{
+            padding: '9px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+            cursor: (!hydrated || !input.trim()) ? 'not-allowed' : 'pointer',
+            border: 'none',
+            background: (!hydrated || !input.trim()) ? '#1c2a47' : 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+            color: (!hydrated || !input.trim()) ? '#64748b' : '#fff',
+          }}
+        >
+          + Log
+        </button>
+        {history.length > 0 && (
+          <button
+            onClick={() => { setHistory([]); try { localStorage.removeItem(FOLLOWER_STORAGE_KEY) } catch { /* ignore */ } }}
+            style={{ padding: '9px 12px', borderRadius: 8, fontSize: 11, cursor: 'pointer', border: '1px solid #1c2a47', background: '#131d35', color: '#64748b' }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function CollabFinder({ analysis }: { analysis: AnalysisResult | null }) {
   const niche = analysis?.patterns?.commonBodyStructure ?? 'lifestyle and dance content'
   const suggestions = [
@@ -167,6 +285,7 @@ export default function GrowthClient({ analysis, reels }: { analysis: AnalysisRe
       </div>
 
       <EngagementHeatmap analysis={analysis} />
+      <FollowerGrowthTracker />
       <CollabFinder analysis={analysis} />
     </>
   )

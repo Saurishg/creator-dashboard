@@ -131,33 +131,16 @@ export default function AnalysisPage() {
     setLoading(true)
     setError(null)
     setStep('Scraping your latest reels from Instagram…')
-
     try {
-      // Try cached first
-      const cached = await fetch('/api/analyze', { headers: authHeader })
-      if (cached.ok) {
-        const json: AnalysisResult = await cached.json()
-        if (json.breakdowns?.length) {
-          setResult(json)
-          setLoading(false)
-          return
-        }
-      }
-
       setStep('Downloading videos and transcribing with Whisper medium…')
       const res = await fetch('/api/analyze', { method: 'POST', headers: authHeader })
       const json = await res.json()
-
       if (!res.ok || json.error) {
         setError(json.error ?? 'Analysis failed')
       } else {
         const full = await fetch('/api/analyze', { headers: authHeader })
-        if (full.ok) {
-          const fullJson: AnalysisResult = await full.json()
-          setResult(fullJson)
-        } else {
-          setResult(json as AnalysisResult)
-        }
+        if (full.ok) setResult(await full.json() as AnalysisResult)
+        else setResult(json as AnalysisResult)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
