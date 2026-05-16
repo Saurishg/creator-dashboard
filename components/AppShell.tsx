@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Sidebar from './Sidebar'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { ToastProvider } from '@/components/ToastProvider'
+import CommandPalette from '@/components/CommandPalette'
+import AIChat from '@/components/AIChat'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -12,11 +15,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   if (isSetup) {
-    return <>{children}</>
+    return <ToastProvider>{children}</ToastProvider>
   }
 
   return (
-    <>
+    <ToastProvider>
+      <CommandPalette />
+      <AIChat />
       {isMobile && sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
@@ -71,6 +76,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       >
         {children}
       </main>
-    </>
+    </ToastProvider>
   )
 }
