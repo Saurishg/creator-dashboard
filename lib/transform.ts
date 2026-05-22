@@ -108,14 +108,13 @@ const PERF_COLORS: Record<string, string> = {
 // ── Main transformers ─────────────────────────────────────────────────────────
 
 export function transformReels(posts: ApifyPost[]): DashboardReel[] {
-  // Only keep video posts with view data
-  const videos = posts.filter(
-    (p) => p.type === 'Video' || p.type === 'Reel' || (p.videoViewCount ?? 0) > 0,
-  )
+  // Include all posts (videos, images, carousels) — engagement analytics apply to all content types
+  const videos = posts.filter((p) => p.id || p.shortCode) // exclude stubs with no id
 
   if (videos.length === 0) return []
 
-  const maxViews = Math.max(...videos.map((p) => p.videoViewCount ?? 0), 1)
+  // Use likes as fallback performance metric when view count is unavailable
+  const maxViews = Math.max(...videos.map((p) => p.videoViewCount ?? p.likesCount ?? 0), 1)
 
   return videos.map((post, i) => {
     const views = post.videoViewCount ?? 0
