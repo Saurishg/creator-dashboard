@@ -2,6 +2,7 @@
 
 import { motion, useAnimationControls } from 'framer-motion'
 import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useCounter } from '@/hooks/useCounter'
 import { nextReelIdea as dummyIdea } from '@/lib/dummy-data'
 import type { AnalysisResult } from '@/lib/analysis-types'
@@ -27,6 +28,7 @@ function buildIdeaFromAnalysis(analysis: AnalysisResult) {
 }
 
 export default function NextReelIdea({ analysis }: { analysis?: AnalysisResult | null }) {
+  const router = useRouter()
   const idea = analysis?.patterns ? buildIdeaFromAnalysis(analysis) : dummyIdea
   const viralControls = useAnimationControls()
   const viralScore = useCounter(idea.viralScore, 2000, 500)
@@ -185,6 +187,7 @@ export default function NextReelIdea({ analysis }: { analysis?: AnalysisResult |
 
       {/* CTA */}
       <button
+        onClick={() => router.push('/calendar')}
         style={{
           width: '100%',
           padding: 12,

@@ -57,9 +57,9 @@ export default function CompetitorsClient({
         const lines = buf.split('\n')
         buf = lines.pop() ?? ''
         for (const line of lines) {
-          if (!line.startsWith('data:')) continue
+          if (!line.startsWith('data: ')) continue
           try {
-            const msg = JSON.parse(line.slice(5))
+            const msg = JSON.parse(line.slice(6))
             if (msg.step) setStatusMsg(msg.step)
             if (msg.progress) setProgress(msg.progress)
             if (msg.error) { setError(msg.error); setRunning(false); return }
@@ -87,13 +87,27 @@ export default function CompetitorsClient({
             {compAnalysis && <span style={{ marginLeft: 8, color: '#a5b4fc', fontSize: 11, background: 'rgba(99,102,241,.1)', padding: '1px 6px', borderRadius: 99 }}>🧠 AI Analysed</span>}
           </p>
         </div>
-        <button
-          onClick={runAnalysis}
-          disabled={running}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: running ? 'not-allowed' : 'pointer', border: 'none', background: running ? '#1c2a47' : 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: running ? '#64748b' : '#fff', boxShadow: running ? 'none' : '0 4px 20px rgba(99,102,241,.35)', transition: 'all .2s' }}
-        >
-          {running ? '⏳ Analysing…' : '🧠 Analyse Competitors'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                const enabled = localStorage.getItem('competitor-alerts') !== 'off'
+                localStorage.setItem('competitor-alerts', enabled ? 'off' : 'on')
+                alert(enabled ? '🔕 Competitor alerts disabled' : '🔔 Competitor alerts enabled — you\'ll see a banner when a competitor posts a viral reel (>2× their avg views)')
+              }
+            }}
+            style={{ padding: '10px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: '1px solid #1c2a47', background: '#0f1629', color: '#64748b' }}
+          >
+            🔔 Alerts
+          </button>
+          <button
+            onClick={runAnalysis}
+            disabled={running}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: running ? 'not-allowed' : 'pointer', border: 'none', background: running ? '#1c2a47' : 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: running ? '#64748b' : '#fff', boxShadow: running ? 'none' : '0 4px 20px rgba(99,102,241,.35)', transition: 'all .2s' }}
+          >
+            {running ? '⏳ Analysing…' : '🧠 Analyse Competitors'}
+          </button>
+        </div>
       </motion.div>
 
       {/* Progress bar */}

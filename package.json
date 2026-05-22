@@ -12,7 +12,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "worker:analysis": "node scripts/run-analysis-job.mjs"
+    "worker:analysis": "node scripts/run-analysis-job.mjs",
+    "share:whatsapp": "node scripts/send-whatsapp-link.mjs"
   },
   "dependencies": {
     "apify-client": "^2.23.2",

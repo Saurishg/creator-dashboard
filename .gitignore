@@ -31,3 +31,6 @@ reel-*/
 *.wav
 agentdb.rvf
 agentdb.rvf.lock
+
+# Instagram session cookies — live credentials, never commit
+scripts/.ig-cookies.json

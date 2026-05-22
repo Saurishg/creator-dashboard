@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({})) as { topic?: string; type?: 'hashtags' | 'caption' }
   const type = body.type ?? 'hashtags'
-  const topic = body.topic ?? ''
+  const topic = (body.topic ?? '').slice(0, 200).replace(/[<>]/g, '')
 
   const profile = readCreatorProfile()
   const analysis = readCache<AnalysisResult>('analysis.json')

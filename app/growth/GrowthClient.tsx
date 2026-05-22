@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import type { AnalysisResult } from '@/lib/analysis-types'
+import type { AnalysisResult, CompetitorAnalysisResult } from '@/lib/analysis-types'
 import type { DashboardReel } from '@/lib/transform'
 
 const FOLLOWER_STORAGE_KEY = 'follower-history-v1'
@@ -12,12 +12,12 @@ const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 const HOURS = Array.from({length:24},(_,i)=>i)
 
 function PostingTimeAnalysis({ reels }: { reels: DashboardReel[] }) {
-  // Build day-of-week performance from reel dates (relative dates → approximate)
   const dayData = DAYS.map(d => ({ day: d, views: 0, count: 0 }))
-  // Use viewsRaw to weight days
-  reels.forEach((r, i) => {
-    const dayIdx = (new Date().getDay() - (r.date.includes('Yesterday') ? 1 : r.date.includes('Today') ? 0 : parseInt(r.date) || i + 2)) % 7
-    const idx = ((dayIdx % 7) + 7) % 7
+  reels.forEach((r) => {
+    if (!r.dateIso) return
+    const d = new Date(r.dateIso)
+    if (isNaN(d.getTime())) return
+    const idx = d.getDay()
     dayData[idx].views += r.viewsRaw
     dayData[idx].count++
   })
@@ -73,16 +73,23 @@ function GrowthChart({ reels }: { reels: DashboardReel[] }) {
   )
 }
 
-function EngagementHeatmap({ analysis }: { analysis: AnalysisResult | null }) {
-  // Generate heatmap data from hook type engagement
-  const hookEng = analysis?.patterns?.avgEngagementByHookType ?? {}
+function EngagementHeatmap({ reels }: { reels: DashboardReel[] }) {
+  const cellMap = new Map<string, { views: number; count: number }>()
+  reels.forEach((r) => {
+    if (!r.dateIso) return
+    const d = new Date(r.dateIso)
+    if (isNaN(d.getTime())) return
+    const key = `${DAYS[d.getDay()]}-${d.getHours()}`
+    const cell = cellMap.get(key) ?? { views: 0, count: 0 }
+    cell.views += r.viewsRaw
+    cell.count++
+    cellMap.set(key, cell)
+  })
   const heatData: { day: string; hour: number; value: number }[] = []
-  DAYS.forEach((day, di) => {
+  DAYS.forEach((day) => {
     HOURS.filter(h => h >= 6 && h <= 22).forEach(hour => {
-      // Simulate engagement pattern: higher in evenings, weekends
-      const base = (hour >= 18 && hour <= 21) ? 0.8 : (hour >= 12 && hour <= 14) ? 0.5 : 0.2
-      const weekend = (di === 0 || di === 6) ? 1.3 : 1
-      heatData.push({ day, hour, value: Math.round(base * weekend * 100) / 100 })
+      const cell = cellMap.get(`${day}-${hour}`)
+      heatData.push({ day, hour, value: cell ? cell.views / cell.count : 0 })
     })
   })
 
@@ -238,14 +245,21 @@ function FollowerGrowthTracker() {
   )
 }
 
-function CollabFinder({ analysis }: { analysis: AnalysisResult | null }) {
-  const niche = analysis?.patterns?.commonBodyStructure ?? 'lifestyle and dance content'
-  const suggestions = [
-    { handle: '@dance.with.niche', reason: 'Similar dance content style, complementary audience', match: 92 },
-    { handle: '@fashionvibes.in', reason: 'Fashion + lifestyle overlap, high engagement niche', match: 87 },
-    { handle: '@relatable.reels', reason: 'Same audience demographic, personality-driven content', match: 84 },
-    { handle: '@glam.daily', reason: 'Beauty + glam content, trending in your niche', match: 79 },
-  ]
+const COLLAB_FALLBACK = [
+  { handle: '@ai.for.business', reason: 'AI productivity content, overlapping business audience', match: 91 },
+  { handle: '@indianentrepreneur', reason: 'Indian startup & hustle niche, high engagement overlap', match: 86 },
+  { handle: '@buildwithclaude', reason: 'Claude / LLM tools niche, same technical audience', match: 83 },
+  { handle: '@solofounder.in', reason: 'Solo founder community, complementary professional niche', match: 78 },
+]
+
+function CollabFinder({ analysis, compAnalysis }: { analysis: AnalysisResult | null; compAnalysis: CompetitorAnalysisResult | null }) {
+  const suggestions = compAnalysis?.competitors?.length
+    ? compAnalysis.competitors.map((c, i) => ({
+        handle: `@${c.handle}`,
+        reason: c.patterns.winningFormula.slice(0, 80) + (c.patterns.winningFormula.length > 80 ? '…' : ''),
+        match: 88 - i * 7,
+      }))
+    : COLLAB_FALLBACK
 
   return (
     <div style={{ background: '#0f1629', border: '1px solid #1c2a47', borderRadius: 14, padding: 22 }}>
@@ -269,7 +283,7 @@ function CollabFinder({ analysis }: { analysis: AnalysisResult | null }) {
   )
 }
 
-export default function GrowthClient({ analysis, reels }: { analysis: AnalysisResult | null; reels: DashboardReel[] }) {
+export default function GrowthClient({ analysis, reels, compAnalysis }: { analysis: AnalysisResult | null; reels: DashboardReel[]; compAnalysis: CompetitorAnalysisResult | null }) {
   return (
     <>
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 28 }}>
@@ -284,9 +298,9 @@ export default function GrowthClient({ analysis, reels }: { analysis: AnalysisRe
         <GrowthChart reels={reels} />
       </div>
 
-      <EngagementHeatmap analysis={analysis} />
+      <EngagementHeatmap reels={reels} />
       <FollowerGrowthTracker />
-      <CollabFinder analysis={analysis} />
+      <CollabFinder analysis={analysis} compAnalysis={compAnalysis} />
     </>
   )
 }

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextResponse } from 'next/server'
 import { scrapeInstagramSync, type ApifyPost } from '@/lib/apify'
 import { extractTrendingAudio } from '@/lib/transform'

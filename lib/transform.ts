@@ -9,6 +9,7 @@ export interface DashboardReel {
   title: string
   type: ReelType
   date: string
+  dateIso?: string
   likes: string
   likesRaw: number
   comments: string
@@ -116,7 +117,7 @@ export function transformReels(posts: ApifyPost[]): DashboardReel[] {
 
   const maxViews = Math.max(...videos.map((p) => p.videoViewCount ?? 0), 1)
 
-  return videos.slice(0, 10).map((post, i) => {
+  return videos.map((post, i) => {
     const views = post.videoViewCount ?? 0
     const type  = guessType(post.caption)
     const pct   = Math.round((views / maxViews) * 100)
@@ -126,6 +127,7 @@ export function transformReels(posts: ApifyPost[]): DashboardReel[] {
       title:         post.caption ? `"${post.caption.slice(0, 80).replace(/\n/g, ' ')}"` : 'Untitled reel',
       type,
       date:          relativeDate(post.timestamp),
+      dateIso:       post.timestamp,
       likes:         formatNumber(post.likesCount),
       likesRaw:      post.likesCount,
       comments:      formatNumber(post.commentsCount),
@@ -149,6 +151,30 @@ export function parseFormattedNumber(s: string): number {
   return n
 }
 
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function formatHour(h: number): string {
+  if (h === 0)  return '12AM'
+  if (h < 12)   return `${h}AM`
+  if (h === 12) return '12PM'
+  return `${h - 12}PM`
+}
+
+function computeBestPostingTime(reels: DashboardReel[]): string {
+  const buckets = new Map<string, number>()
+  for (const reel of reels) {
+    if (!reel.dateIso) continue
+    const d = new Date(reel.dateIso)
+    if (isNaN(d.getTime())) continue
+    const key = `${d.getDay()}_${d.getHours()}`
+    buckets.set(key, (buckets.get(key) ?? 0) + reel.viewsRaw)
+  }
+  if (buckets.size === 0) return 'Tue 7PM'
+  const best = Array.from(buckets.entries()).reduce((a, b) => (b[1] > a[1] ? b : a))
+  const [dayStr, hourStr] = best[0].split('_')
+  return `${DAY_NAMES[Number(dayStr)]} ${formatHour(Number(hourStr))}`
+}
+
 export function computeStats(reels: DashboardReel[]): DashboardStats {
   const totalReels = reels.length
   if (totalReels === 0) {
@@ -166,7 +192,7 @@ export function computeStats(reels: DashboardReel[]): DashboardStats {
   return {
     totalReels,
     avgViews,
-    bestPostingTime: 'Tue 7PM',   // requires posting-time analysis — kept as smart default
+    bestPostingTime: computeBestPostingTime(reels),
     engagementRate: engRate,
   }
 }

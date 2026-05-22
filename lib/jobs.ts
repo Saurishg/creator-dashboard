@@ -96,10 +96,7 @@ export async function runAnalysisJob(
         .filter((item) => item.posts.length > 0)
     }
 
-    const ownVideoCount = Math.min(
-      ownPosts.filter((p) => p.videoUrl && ((p.videoViewCount ?? 0) > 0 || p.type === 'Video' || p.type === 'Reel')).length,
-      15,
-    )
+    const ownVideoCount = ownPosts.filter((p) => p.videoUrl).length
     const compVideoCount = competitorData.reduce(
       (sum, item) => sum + Math.min(item.posts.filter((p) => p.videoUrl).length, 5),
       0,

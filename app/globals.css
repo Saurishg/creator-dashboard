@@ -52,3 +52,42 @@ body {
   .grid-3col { grid-template-columns: 1fr; }
   .grid-2col { grid-template-columns: 1fr; }
 }
+
+/* ── Light theme ─────────────────────────────────────────── */
+html[data-theme="light"] body,
+body[data-theme="light"] {
+  background: #f5f6fa !important;
+  color: #1a1d2e !important;
+}
+body[data-theme="light"] {
+  --bg:      #f5f6fa;
+  --bg2:     #eceef5;
+  --card:    #ffffff;
+  --card2:   #f3f4f8;
+  --border:  #d6dae6;
+  --border2: #c2c8d9;
+  --text:    #1a1d2e;
+  --muted:   #6b7280;
+  --muted2:  #4b5563;
+}
+body[data-theme="light"] aside { background: #ffffff !important; border-right-color: #d6dae6 !important; }
+body[data-theme="light"] [style*="background: rgb(15, 22, 41)"],
+body[data-theme="light"] [style*="background:#0f1629"],
+body[data-theme="light"] [style*="background: #0f1629"] { background: #ffffff !important; color: #1a1d2e !important; }
+body[data-theme="light"] [style*="background: rgb(19, 29, 53)"],
+body[data-theme="light"] [style*="background:#131d35"],
+body[data-theme="light"] [style*="background: #131d35"] { background: #f3f4f8 !important; color: #1a1d2e !important; }
+body[data-theme="light"] [style*="border: 1px solid rgb(28, 42, 71)"],
+body[data-theme="light"] [style*="border: 1px solid #1c2a47"],
+body[data-theme="light"] [style*="border-color: rgb(28, 42, 71)"] { border-color: #d6dae6 !important; }
+body[data-theme="light"] [style*="color: rgb(100, 116, 139)"],
+body[data-theme="light"] [style*="color:#64748b"],
+body[data-theme="light"] [style*="color: #64748b"] { color: #6b7280 !important; }
+body[data-theme="light"] [style*="color: rgb(148, 163, 184)"],
+body[data-theme="light"] [style*="color:#94a3b8"],
+body[data-theme="light"] [style*="color: #94a3b8"] { color: #4b5563 !important; }
+body[data-theme="light"] ::-webkit-scrollbar-track { background: #eceef5; }
+body[data-theme="light"] ::-webkit-scrollbar-thumb { background: #c2c8d9; }
+
+/* ── Density: compact ────────────────────────────────────── */
+body[data-density="compact"] main { padding-top: 18px !important; padding-bottom: 28px !important; }

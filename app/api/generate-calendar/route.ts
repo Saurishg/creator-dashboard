@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { getOpenAI, LOCAL_MODEL } from '@/lib/openai-client'
 import { readCache, writeCache } from '@/lib/cache'
 import type { AnalysisResult, CompetitorAnalysisResult } from '@/lib/analysis-types'

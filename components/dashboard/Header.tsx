@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import ShareWhatsApp from '@/components/dashboard/ShareWhatsApp'
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
@@ -93,6 +94,7 @@ export default function Header({ username, analysedAt }: { username?: string; an
           >
             {analysing ? '⏳ Analysing…' : '🔄 Re-analyse'}
           </button>
+          <ShareWhatsApp />
         </div>
         {analyseError && (
           <div style={{ fontSize: 12, color: '#f87171', padding: '6px 10px', background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)', borderRadius: 8 }}>

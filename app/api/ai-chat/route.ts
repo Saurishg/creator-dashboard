@@ -1,6 +1,9 @@
+export const dynamic = 'force-dynamic'
+
 import { getOpenAI, LOCAL_MODEL } from '@/lib/openai-client'
 import { readCache } from '@/lib/cache'
 import { readCreatorProfile } from '@/lib/creator-profile'
+import { requireApiAuth } from '@/lib/auth'
 import type { AnalysisResult, CompetitorAnalysisResult } from '@/lib/analysis-types'
 
 interface ProfileCache {
@@ -156,6 +159,9 @@ function buildSystemPrompt(): string {
 }
 
 export async function POST(req: Request) {
+  const auth = requireApiAuth(req)
+  if (auth) return auth
+
   const body = await req.json().catch(() => ({})) as { messages?: { role: string; content: string }[] }
   const messages = body.messages ?? []
 

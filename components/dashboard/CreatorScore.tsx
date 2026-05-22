@@ -3,8 +3,9 @@
 import { motion, useAnimationControls } from 'framer-motion'
 import { useEffect } from 'react'
 import { useCounter } from '@/hooks/useCounter'
-import { creatorScore } from '@/lib/dummy-data'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import type { AnalysisResult } from '@/lib/analysis-types'
+import type { DashboardStats } from '@/lib/transform'
 
 const CIRCUMFERENCE = 2 * Math.PI * 70  // ≈ 440
 
@@ -21,17 +22,64 @@ const badgeStyleMap: Record<string, React.CSSProperties> = {
   Average: { background: 'rgba(245,158,11,.12)', color: '#f59e0b' },
 }
 
-export default function CreatorScore() {
+function pctBadge(pct: number): 'Strong' | 'Average' | 'Weak' {
+  return pct >= 70 ? 'Strong' : pct >= 40 ? 'Average' : 'Weak'
+}
+
+function pctColor(pct: number): string {
+  return pct >= 70 ? 'green' : pct >= 40 ? 'amber' : 'red'
+}
+
+function computeScore(analysis: AnalysisResult | null, stats: DashboardStats | null) {
+  const engRate = stats?.engagementRate ?? 0
+  const hookTypes = analysis?.patterns?.topHookTypes ?? []
+  const hookEngMap = analysis?.patterns?.avgEngagementByHookType ?? {}
+  const hookEngValues = Object.values(hookEngMap)
+  const avgHookEng = hookEngValues.length > 0
+    ? hookEngValues.reduce((a, b) => a + b, 0) / hookEngValues.length
+    : engRate
+
+  const engPct       = Math.min(Math.round(engRate * 6.25), 100)
+  const hookQualPct  = Math.min(Math.round(avgHookEng * 6.25), 100)
+  const varietyPct   = Math.min(hookTypes.length * 14, 100)
+  const totalReels   = stats?.totalReels ?? 0
+  const consPct      = Math.min(Math.round(totalReels * 2.5), 100)
+  const hashtagPct   = 62
+
+  const score = Math.round(engPct * 0.35 + hookQualPct * 0.25 + varietyPct * 0.2 + consPct * 0.1 + hashtagPct * 0.1)
+  const grade = score >= 90 ? 'A+' : score >= 85 ? 'A' : score >= 80 ? 'B+' : score >= 75 ? 'B' : score >= 70 ? 'C+' : 'C'
+
+  return {
+    score,
+    grade,
+    subtitle: totalReels > 0 ? `Based on ${totalReels} reels · updated live` : 'Run analysis to see your live score',
+    metrics: [
+      { label: 'Engagement Rate',     value: `${engRate.toFixed(1)}%`,                                        pct: engPct,      color: pctColor(engPct),      badge: pctBadge(engPct)      },
+      { label: 'Hook Quality',        value: avgHookEng > 0 ? `${avgHookEng.toFixed(1)}% eng` : '—',          pct: hookQualPct, color: pctColor(hookQualPct), badge: pctBadge(hookQualPct) },
+      { label: 'Content Variety',     value: `${hookTypes.length} hook type${hookTypes.length !== 1 ? 's' : ''}`, pct: varietyPct,  color: pctColor(varietyPct),  badge: pctBadge(varietyPct)  },
+      { label: 'Posting Consistency', value: `${totalReels} reels`,                                           pct: consPct,     color: pctColor(consPct),     badge: pctBadge(consPct)     },
+      { label: 'Hashtag Strategy',    value: '62/100',                                                        pct: hashtagPct,  color: 'amber',               badge: 'Average' as const    },
+    ],
+  }
+}
+
+interface Props {
+  analysis: AnalysisResult | null
+  stats: DashboardStats | null
+}
+
+export default function CreatorScore({ analysis, stats }: Props) {
   const scoreControls = useAnimationControls()
-  const score = useCounter(creatorScore.score, 1800, 300)
+  const { score, grade, subtitle, metrics } = computeScore(analysis, stats)
+  const animatedScore = useCounter(score, 1800, 300)
   const isMobile = useIsMobile()
 
   useEffect(() => {
-    const offset = CIRCUMFERENCE - (creatorScore.score / 100) * CIRCUMFERENCE
+    const offset = CIRCUMFERENCE - (score / 100) * CIRCUMFERENCE
     setTimeout(() => {
       scoreControls.start({ strokeDashoffset: offset, transition: { duration: 1.8, ease: [0.22, 1, 0.36, 1] } })
     }, 300)
-  }, [scoreControls])
+  }, [scoreControls, score])
 
   return (
     <motion.div
@@ -99,7 +147,7 @@ export default function CreatorScore() {
               WebkitTextFillColor: 'transparent',
             }}
           >
-            {score}
+            {animatedScore}
           </div>
           <div style={{ fontSize: 14, color: '#64748b', fontWeight: 500 }}>/100</div>
           <div
@@ -114,7 +162,7 @@ export default function CreatorScore() {
               padding: '2px 10px',
             }}
           >
-            B+
+            {grade}
           </div>
         </div>
       </div>
@@ -125,11 +173,11 @@ export default function CreatorScore() {
           Your Creator Score
         </h2>
         <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
-          {creatorScore.subtitle}
+          {subtitle}
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {creatorScore.metrics.map((m, i) => (
+          {metrics.map((m, i) => (
             <div key={m.label} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <div
                 style={{

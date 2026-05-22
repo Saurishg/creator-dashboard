@@ -1,5 +1,6 @@
 'use client'
 
+import type React from 'react'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import type { AnalysisResult, ReelBreakdown } from '@/lib/analysis-types'
@@ -124,7 +125,7 @@ export default function AnalysisPage() {
       .then((json: AnalysisResult | null) => {
         if (json?.breakdowns?.length) setResult(json)
       })
-      .catch(() => {})
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load analysis'))
   }, [])
 
   async function runAnalysis() {

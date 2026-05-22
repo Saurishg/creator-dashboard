@@ -71,6 +71,8 @@ interface CompetitorTranscript {
   hookType: string
 }
 
+const ANALYSIS_BATCH = 30 // max posts per phi4 call to stay within context
+
 async function analyseWithGPT(
   partials: Omit<ReelBreakdown, 'hook' | 'body' | 'cta' | 'hookType' | 'emotionalTrigger'>[],
   competitorTranscripts: CompetitorTranscript[] = [],
@@ -79,11 +81,6 @@ async function analyseWithGPT(
   const profile = readCreatorProfile()
   const handle = creatorHandle(profile)
 
-  const ownReelsText = partials.map((r) => {
-    const cap = (r as { caption?: string }).caption?.trim()
-    return `REEL ${r.reelId} | Views:${r.views} | Caption: ${cap || '(none)'}`
-  }).join('\n')
-
   const competitorSummary = competitorTranscripts.length > 0
     ? `\nCOMPETITOR context (for patterns only — NOT in individual array):\n` +
       competitorTranscripts.map((r) =>
@@ -91,45 +88,90 @@ async function analyseWithGPT(
       ).join('\n')
     : ''
 
-  const completion = await openai.chat.completions.create({
-    model: LOCAL_MODEL,
-    max_tokens: 4000,
-    messages: [
-      {
-        role: 'system',
-        content: `You are an Instagram content strategist for ${profile.contentNiche} creators.`,
-      },
-      {
-        role: 'user',
-        content: `Analyse ${partials.length} reels from ${handle} (lifestyle/fashion/music creator — captions ARE the hooks, transcripts are song lyrics).
+  const emptyPatterns: ContentPatterns = {
+    topHookTypes: [], topCTAFormats: [], commonBodyStructure: '',
+    bestPerformingPattern: '', weaknesses: [], recommendations: [],
+    winningFormula: '', avgEngagementByHookType: {},
+  }
 
-For EACH reel return reelId (EXACTLY as shown), hook (= caption text), body, cta, hookType (Bold claim|Shocking number|Question|Story opener|Warning/Don't|Contrarian|Social proof|Future promise), emotionalTrigger (Curiosity|FOMO|Authority|Social proof|Aspiration|Excitement).
+  // Batch into groups of ANALYSIS_BATCH to stay within phi4 context window
+  const allIndividual: Pick<ReelBreakdown, 'reelId' | 'hook' | 'body' | 'cta' | 'hookType' | 'emotionalTrigger'>[] = []
+  let lastPatterns: ContentPatterns = emptyPatterns
 
-Also return patterns: topHookTypes (array), topCTAFormats (array), commonBodyStructure, bestPerformingPattern, weaknesses (3 items), recommendations (5 items), winningFormula, avgEngagementByHookType (object).
+  for (let i = 0; i < partials.length; i += ANALYSIS_BATCH) {
+    const batch = partials.slice(i, i + ANALYSIS_BATCH)
+    const isLastBatch = i + ANALYSIS_BATCH >= partials.length
 
-Return ONLY valid JSON: {"individual":[{"reelId":"...","hook":"...","body":"...","cta":"...","hookType":"...","emotionalTrigger":"..."}],"patterns":{"topHookTypes":[],"topCTAFormats":[],"commonBodyStructure":"...","bestPerformingPattern":"...","weaknesses":[],"recommendations":[],"winningFormula":"...","avgEngagementByHookType":{}}}
+    const reelsText = batch.map((r) => {
+      const cap = (r as { caption?: string }).caption?.trim()
+      return `REEL ${r.reelId} | Views:${r.views} | Caption: ${cap || '(none)'}`
+    }).join('\n')
 
-Reels:
-${ownReelsText}${competitorSummary}`,
-      },
-    ],
-    response_format: { type: 'json_object' },
-    temperature: 0.3,
-  })
+    const patternsInstruction = isLastBatch
+      ? `Also return patterns: topHookTypes (array), topCTAFormats (array), commonBodyStructure, bestPerformingPattern, weaknesses (3 items), recommendations (5 items), winningFormula, avgEngagementByHookType (object).`
+      : `Skip patterns — only return individual breakdowns for this batch.`
 
-  return parseJsonObject(completion.choices[0]?.message?.content ?? '{}', {
-    individual: [],
-    patterns: {
-      topHookTypes: [],
-      topCTAFormats: [],
-      commonBodyStructure: '',
-      bestPerformingPattern: '',
-      weaknesses: [],
-      recommendations: [],
-      winningFormula: '',
-      avgEngagementByHookType: {},
-    },
-  })
+    const completion = await openai.chat.completions.create({
+      model: LOCAL_MODEL,
+      max_tokens: 6000,
+      messages: [
+        {
+          role: 'system',
+          content: `You are an Instagram content strategist for ${profile.contentNiche} creators.`,
+        },
+        {
+          role: 'user',
+          content: `Analyse ${batch.length} posts from ${handle} (captions ARE the hooks).
+
+For EACH post return reelId (EXACTLY as shown), hook (= caption first line), body, cta, hookType (Bold claim|Shocking number|Question|Story opener|Warning/Don't|Contrarian|Social proof|Future promise), emotionalTrigger (Curiosity|FOMO|Authority|Social proof|Aspiration|Excitement).
+
+${patternsInstruction}
+
+Return ONLY valid JSON: {"individual":[{"reelId":"...","hook":"...","body":"...","cta":"...","hookType":"...","emotionalTrigger":"..."}]${isLastBatch ? ',"patterns":{"topHookTypes":[],"topCTAFormats":[],"commonBodyStructure":"...","bestPerformingPattern":"...","weaknesses":[],"recommendations":[],"winningFormula":"...","avgEngagementByHookType":{}}' : ''}${isLastBatch ? '' : ''}}
+
+Posts:
+${reelsText}${isLastBatch ? competitorSummary : ''}`,
+        },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.3,
+    })
+
+    const batchResult = parseJsonObject(completion.choices[0]?.message?.content ?? '{}', {
+      individual: [],
+      patterns: emptyPatterns,
+    })
+
+    allIndividual.push(...(Array.isArray(batchResult.individual) ? batchResult.individual : []))
+    if (isLastBatch && batchResult.patterns) lastPatterns = batchResult.patterns
+  }
+
+  return { individual: allIndividual, patterns: lastPatterns }
+}
+
+// ── Playwright scraper ────────────────────────────────────────────────────────
+
+async function scrapeWithPlaywright(handle: string, limit: number): Promise<{ posts: ApifyPost[]; followersCount: number }> {
+  const scriptPath = path.join(process.cwd(), 'scripts', 'playwright-ig-scrape.py')
+  try {
+    const { stdout, stderr } = await execFileAsync(
+      'python3', [scriptPath, handle, String(limit)],
+      { timeout: 180_000, maxBuffer: 20 * 1024 * 1024 },
+    )
+    if (stderr) console.error(`[playwright-scrape] stderr for @${handle}:`, stderr.slice(0, 500))
+    const raw = JSON.parse(stdout)
+    if (Array.isArray(raw)) return { posts: raw as ApifyPost[], followersCount: 0 }
+    return { posts: (raw.posts ?? []) as ApifyPost[], followersCount: raw.followersCount ?? 0 }
+  } catch (err) {
+    const e = err as { stderr?: string; message?: string }
+    console.error(`[playwright-scrape] failed for @${handle}:`, e.stderr?.slice(0, 500) ?? e.message)
+    return { posts: [], followersCount: 0 }
+  }
+}
+
+function apifyTokenValid(): boolean {
+  const token = process.env.APIFY_API_TOKEN
+  return Boolean(token && !token.startsWith('your_'))
 }
 
 // ── Public pipeline steps ─────────────────────────────────────────────────────
@@ -144,14 +186,26 @@ const COMPETITOR_GRADIENTS = [
 export async function scrapeTranscribeAnalyseCompetitors(
   handles: string[],
   onProgress?: (msg: string, pct: number) => void,
+  prefetchedPosts?: ApifyPost[],
 ): Promise<import('./analysis-types').CompetitorAnalysisResult> {
-  // 1. Scrape posts
-  onProgress?.('Scraping competitor reels from Instagram…', 5)
-  const directUrls = handles.map((h) => `https://www.instagram.com/${h}/`)
-  const posts = await scrapeInstagramSync<ApifyPost>(
-    { directUrls, resultsType: 'posts', resultsLimit: 10 },
-    180,
-  )
+  // 1. Scrape posts (or use prefetched to skip scraping)
+  let posts: ApifyPost[]
+  if (prefetchedPosts && prefetchedPosts.length > 0) {
+    posts = prefetchedPosts
+    onProgress?.('Using pre-scraped posts…', 5)
+  } else {
+    onProgress?.('Scraping competitor reels from Instagram…', 5)
+    const perHandle = await Promise.all(handles.map((h) => scrapeWithPlaywright(h, 10)))
+    posts = perHandle.flatMap((r) => r.posts)
+
+    if (posts.length === 0 && apifyTokenValid()) {
+      const directUrls = handles.map((h) => `https://www.instagram.com/${h}/`)
+      posts = await scrapeInstagramSync<ApifyPost>(
+        { directUrls, resultsType: 'posts', resultsLimit: 10 },
+        180,
+      )
+    }
+  }
 
   // Save raw posts for future use
   writeCache('competitor-raw-posts.json', { posts, scrapedAt: new Date().toISOString() })
@@ -173,27 +227,38 @@ export async function scrapeTranscribeAnalyseCompetitors(
 
   for (const handle of handles) {
     const ownerPosts = byOwner.get(handle.toLowerCase()) ?? []
-    const videos = ownerPosts
-      .filter((p) => p.videoUrl && ((p.videoViewCount ?? 0) > 0 || p.type === 'Video' || p.type === 'Reel'))
-      .slice(0, 8)
+    // Use ALL posts with a caption or video; fall back to caption when no video URL
+    const postsToAnalyse = ownerPosts
+      .filter((p) => (p.caption ?? '').length > 0 || p.videoUrl)
+      .slice(0, 15)
 
-    if (videos.length === 0) continue
+    if (postsToAnalyse.length === 0) continue
 
-    onProgress?.(`Transcribing @${handle} reels (${videos.length} videos)…`, 10 + (doneCount / totalHandles) * 60)
+    const videos = postsToAnalyse.filter((p) => p.videoUrl)
+    onProgress?.(
+      videos.length > 0
+        ? `Transcribing @${handle} reels (${videos.length} videos)…`
+        : `Analysing @${handle} captions (${postsToAnalyse.length} posts)…`,
+      10 + (doneCount / totalHandles) * 60,
+    )
 
     const partials: Omit<ReelBreakdown, 'hook' | 'body' | 'cta' | 'hookType' | 'emotionalTrigger'>[] = []
     const BATCH = 4
-    for (let i = 0; i < videos.length; i += BATCH) {
-      const batch = videos.slice(i, i + BATCH)
+    for (let i = 0; i < postsToAnalyse.length; i += BATCH) {
+      const batch = postsToAnalyse.slice(i, i + BATCH)
       const batchResults = await Promise.all(batch.map(async (post) => {
         let transcript = ''
         if (post.videoUrl) {
           try { transcript = await transcribePost(post) } catch { /* silence */ }
         }
         return {
-          reelId: post.id, url: post.url,
-          views: post.videoViewCount ?? 0, likes: post.likesCount, comments: post.commentsCount,
+          reelId:          post.id || post.shortCode,
+          url:             post.url,
+          views:           post.videoViewCount ?? 0,
+          likes:           post.likesCount,
+          comments:        post.commentsCount,
           transcript,
+          caption:         post.caption ?? '',
           engagementScore: engagementScore(post.videoViewCount ?? 0, post.likesCount, post.commentsCount),
         }
       }))
@@ -204,9 +269,11 @@ export async function scrapeTranscribeAnalyseCompetitors(
     onProgress?.(`Analysing @${handle} content with phi4…`, 70 + (doneCount / totalHandles) * 20)
 
     const openai = getOpenAI()
-    const reelsText = partials.map((r) =>
-      `REEL ${r.reelId}\nViews: ${r.views} | Likes: ${r.likes} | Comments: ${r.comments}\nTranscript:\n${r.transcript || '(no transcript)'}\n---`
-    ).join('\n\n')
+    const reelsText = partials.map((r) => {
+      const cap = (r as { caption?: string }).caption?.trim()
+      const content = r.transcript || cap || '(no content)'
+      return `POST ${r.reelId}\nLikes: ${r.likes} | Comments: ${r.comments}\nCaption/Transcript:\n${content}\n---`
+    }).join('\n\n')
 
     let gptResult: { individual: Pick<ReelBreakdown, 'reelId' | 'hook' | 'body' | 'cta' | 'hookType' | 'emotionalTrigger'>[]; patterns: ContentPatterns } = { individual: [], patterns: {} as ContentPatterns }
     try {
@@ -255,10 +322,15 @@ ${reelsText}`,
 }
 
 export async function scrapeAndSaveProfile(username: string, limit = 10) {
-  const posts = await scrapeInstagramSync<ApifyPost>(
-    { directUrls: [`https://www.instagram.com/${username}/`], resultsType: 'posts', resultsLimit: limit },
-    180,
-  )
+  let { posts } = await scrapeWithPlaywright(username, limit)
+
+  if (posts.length === 0 && apifyTokenValid()) {
+    posts = await scrapeInstagramSync<ApifyPost>(
+      { directUrls: [`https://www.instagram.com/${username}/`], resultsType: 'posts', resultsLimit: limit },
+      180,
+    )
+  }
+
   const reels = transformReels(posts)
   const stats = computeStats(reels)
   const result = { reels, stats, scrapedAt: new Date().toISOString() }
@@ -267,16 +339,22 @@ export async function scrapeAndSaveProfile(username: string, limit = 10) {
 }
 
 export async function scrapeAndSaveCompetitors(handles: string[]) {
-  // Scrape each account individually — batch scraping times out on 3+ accounts
   const allPosts: ApifyPost[] = []
+  const followersByHandle = new Map<string, number>()
   for (const handle of handles) {
-    try {
-      const posts = await scrapeInstagramSync<ApifyPost>(
-        { directUrls: [`https://www.instagram.com/${handle}/`], resultsType: 'posts', resultsLimit: 8 },
-        120,
-      )
-      allPosts.push(...posts)
-    } catch { /* account blocked or private — continue */ }
+    let { posts: handlePosts, followersCount } = await scrapeWithPlaywright(handle, 20)
+    followersByHandle.set(handle.toLowerCase(), followersCount)
+
+    if (handlePosts.length === 0 && apifyTokenValid()) {
+      try {
+        handlePosts = await scrapeInstagramSync<ApifyPost>(
+          { directUrls: [`https://www.instagram.com/${handle}/`], resultsType: 'posts', resultsLimit: 8 },
+          120,
+        )
+      } catch { /* account blocked or private — continue */ }
+    }
+
+    allPosts.push(...handlePosts)
   }
   const posts = allPosts
   const byOwner = new Map<string, ApifyPost[]>()
@@ -292,7 +370,7 @@ export async function scrapeAndSaveCompetitors(handles: string[]) {
       username: h,
       fullName: (byOwner.get(h.toLowerCase()) ?? [])[0]?.ownerFullName ?? null,
       biography: null,
-      followersCount: 0,
+      followersCount: followersByHandle.get(h.toLowerCase()) ?? 0,
       followingCount: 0,
       postsCount: 0,
       profilePicUrl: null,
@@ -353,14 +431,30 @@ export async function transcribeAndAnalyse(
   onProgress?: (step: string, done: number, total: number) => void,
   competitorPosts?: { handle: string; posts: ApifyPost[] }[],
 ): Promise<AnalysisResult> {
-  // 1. Transcribe own reels (cap 15)
-  const ownTotal = Math.min(
-    ownPosts.filter((p) => p.videoUrl && ((p.videoViewCount ?? 0) > 0 || p.type === 'Video' || p.type === 'Reel')).length,
-    15,
-  )
-  const partials = await transcribePosts(ownPosts, 15, (done, total) => {
+  // 1. Build partials for ALL posts (photo + video) using captions
+  const allPartials: Omit<ReelBreakdown, 'hook' | 'body' | 'cta' | 'hookType' | 'emotionalTrigger'>[] = ownPosts.map((p) => ({
+    reelId:          p.id,
+    url:             p.url,
+    views:           p.videoViewCount ?? 0,
+    likes:           p.likesCount,
+    comments:        p.commentsCount,
+    transcript:      '',
+    caption:         p.caption ?? '',
+    engagementScore: engagementScore(p.videoViewCount ?? 0, p.likesCount, p.commentsCount),
+  }))
+
+  // 2. Transcribe videos (no hard cap — process all videos, cache prevents re-work)
+  const ownTotal = ownPosts.filter((p) => p.videoUrl && ((p.videoViewCount ?? 0) > 0 || p.type === 'Video' || p.type === 'Reel')).length
+  const transcribed = await transcribePosts(ownPosts, ownTotal, (done, total) => {
     onProgress?.('own', done, total)
   })
+  // Merge transcripts back into allPartials
+  const transcriptMap = new Map(transcribed.map((t) => [t.reelId, t.transcript]))
+  for (const p of allPartials) {
+    const t = transcriptMap.get(p.reelId)
+    if (t) p.transcript = t
+  }
+  const partials = allPartials
 
   // 2. Transcribe competitor reels (cap 5 per competitor)
   const competitorTranscripts: CompetitorTranscript[] = []

@@ -54,11 +54,14 @@ export default function CalendarClient({ calendar }: { calendar: GeneratedCalend
   const [generating, setGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
   const [statusMsg, setStatusMsg] = useState('')
+  const [scheduled, setScheduled] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem('calendar-done')
       if (saved) setDone(new Set(JSON.parse(saved)))
+      const sched = localStorage.getItem('calendar-scheduled')
+      if (sched) setScheduled(new Set(JSON.parse(sched)))
     } catch { /* ignore */ }
   }, [])
 
@@ -70,7 +73,14 @@ export default function CalendarClient({ calendar }: { calendar: GeneratedCalend
     const next = new Set(done)
     next.has(day) ? next.delete(day) : next.add(day)
     setDone(next)
-    localStorage.setItem('calendar-done', JSON.stringify(Array.from(next)))
+    try { localStorage.setItem('calendar-done', JSON.stringify(Array.from(next))) } catch { /* ignore */ }
+  }
+
+  function toggleScheduled(day: number) {
+    const next = new Set(scheduled)
+    next.has(day) ? next.delete(day) : next.add(day)
+    setScheduled(next)
+    try { localStorage.setItem('calendar-scheduled', JSON.stringify(Array.from(next))) } catch { /* ignore */ }
   }
 
   async function generate() {
@@ -99,9 +109,9 @@ export default function CalendarClient({ calendar }: { calendar: GeneratedCalend
         const lines = buf.split('\n')
         buf = lines.pop() ?? ''
         for (const line of lines) {
-          if (!line.startsWith('data:')) continue
+          if (!line.startsWith('data: ')) continue
           try {
-            const msg = JSON.parse(line.slice(5))
+            const msg = JSON.parse(line.slice(6))
             if (msg.step) setStatusMsg(msg.step)
             if (msg.progress) setProgress(msg.progress)
             if (msg.done) { router.refresh(); setGenerating(false) }
@@ -182,10 +192,11 @@ export default function CalendarClient({ calendar }: { calendar: GeneratedCalend
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {posts.map((post, i) => {
             const isDone = done.has(post.day)
+            const isSched = scheduled.has(post.day)
             return (
               <motion.div key={post.day} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.025 }}
                 onClick={() => setSelected(post)}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', background: isDone ? 'rgba(16,185,129,.05)' : '#0f1629', border: isDone ? '1px solid rgba(16,185,129,.2)' : '1px solid #1c2a47', borderRadius: 12, cursor: 'pointer', transition: 'all .15s' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', background: isDone ? 'rgba(16,185,129,.05)' : isSched ? 'rgba(99,102,241,.04)' : '#0f1629', border: isDone ? '1px solid rgba(16,185,129,.2)' : isSched ? '1px solid rgba(99,102,241,.25)' : '1px solid #1c2a47', borderRadius: 12, cursor: 'pointer', transition: 'all .15s' }}
               >
                 {/* Date badge */}
                 <div style={{ textAlign: 'center', flexShrink: 0, width: 44 }}>
@@ -203,6 +214,7 @@ export default function CalendarClient({ calendar }: { calendar: GeneratedCalend
                     <span style={{ fontSize: 11, fontWeight: 700, color: post.color, background: `${post.color}18`, padding: '2px 8px', borderRadius: 99 }}>{post.hookType}</span>
                     <span style={{ fontSize: 11.5, fontWeight: 600, color: '#64748b' }}>{post.topic}</span>
                     {isDone && <span style={{ fontSize: 10, color: '#10b981', background: 'rgba(16,185,129,.1)', padding: '1px 6px', borderRadius: 99 }}>✓ Done</span>}
+                    {isSched && !isDone && <span style={{ fontSize: 10, color: '#6366f1', background: 'rgba(99,102,241,.1)', padding: '1px 6px', borderRadius: 99 }}>📅 Scheduled</span>}
                   </div>
                   <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {post.hook}
@@ -210,6 +222,10 @@ export default function CalendarClient({ calendar }: { calendar: GeneratedCalend
                   <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>CTA: {post.cta}</div>
                 </div>
 
+                <button onClick={(e) => { e.stopPropagation(); toggleScheduled(post.day) }}
+                  style={{ padding: '6px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: '1px solid #1c2a47', background: isSched ? 'rgba(99,102,241,.15)' : '#131d35', color: isSched ? '#6366f1' : '#64748b', flexShrink: 0 }}>
+                  {isSched ? '📅' : 'Schedule'}
+                </button>
                 <button onClick={(e) => { e.stopPropagation(); toggleDone(post.day) }}
                   style={{ padding: '6px 14px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: '1px solid #1c2a47', background: isDone ? 'rgba(16,185,129,.15)' : '#131d35', color: isDone ? '#10b981' : '#64748b', flexShrink: 0, transition: 'all .15s' }}>
                   {isDone ? '✓ Done' : 'Mark Done'}

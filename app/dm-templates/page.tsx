@@ -6,11 +6,11 @@ import { motion } from 'framer-motion'
 const STORAGE_KEY = 'dm-templates-v1'
 
 const DEFAULT_TEMPLATES = [
-  { id: 1, name: 'Collab Request', text: 'Hey! Love your content 🔥 I create similar content and think we could do an amazing collab. Would you be open to it? DM me!' },
-  { id: 2, name: 'Thank You Reply', text: 'Thank you so much! 🙏 Your support means everything. Stay tuned for more content coming soon! ✨' },
-  { id: 3, name: 'Product Inquiry', text: 'Hi! Thanks for reaching out 😊 For product/brand inquiries please email me at [your email]. I\'d love to work together!' },
-  { id: 4, name: 'New Follower Welcome', text: 'Welcome to my page! 🎉 So happy to have you here. Make sure to turn on notifications so you never miss a reel! 💫' },
-  { id: 5, name: 'Giveaway Entry', text: 'You\'re entered! 🎊 Winner announced on [date]. Good luck! Don\'t forget to share with friends for extra entries 🤞' },
+  { id: 1, name: 'Collab Request', text: 'Hey! Love your content 🔥 I create AI + business content for Indian professionals and think we\'d make an amazing collab — our audiences overlap a lot. Would you be open to doing a joint reel? DM me anytime!' },
+  { id: 2, name: 'Thank You Reply', text: 'Thank you so much! 🙏 Comments like yours genuinely make my day. If you want to go deeper on the AI stuff I cover, drop a follow and turn on notifications — I post 2-3x a week ✨' },
+  { id: 3, name: 'AI Consulting Inquiry', text: 'Hi! Thanks for reaching out 😊 For consulting or brand partnerships related to AI implementation, drop me an email at sourish96@gmail.com — happy to explore working together!' },
+  { id: 4, name: 'New Follower Welcome', text: 'Welcome! 🎉 So glad you found this page. I share practical AI tools, business systems, and Claude workflows that actually save time. Turn on notifications so you don\'t miss a reel 🤖💫' },
+  { id: 5, name: 'Strategy Question Reply', text: 'Great question! 🧠 This deserves a proper reel honestly — I\'ll add it to my content calendar. In the meantime, check my highlights for the basics. What\'s your specific use case? Happy to point you to the right reel!' },
 ]
 
 export default function DMTemplatesPage() {
@@ -34,10 +34,12 @@ export default function DMTemplatesPage() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(templates)) } catch { /* ignore */ }
   }, [templates, hydrated])
 
-  function copy(id: number, text: string) {
-    navigator.clipboard.writeText(text)
-    setCopied(id)
-    setTimeout(() => setCopied(null), 1500)
+  async function copy(id: number, text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(id)
+      setTimeout(() => setCopied(null), 1500)
+    } catch { /* clipboard denied */ }
   }
 
   function save() {

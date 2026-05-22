@@ -15,6 +15,7 @@ const navMain = [
 
 const navAccount = [
   { icon: '📅', label: 'Content Calendar', href: '/calendar'       },
+  { icon: '💬', label: 'DM Templates',     href: '/dm-templates'   },
   { icon: '📈', label: 'Growth Tracker',   href: '/growth'         },
   { icon: '⚙️', label: 'Settings',         href: '/settings'       },
 ]
