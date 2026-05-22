@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   if (auth) return auth
 
   const username = process.env.OWN_INSTAGRAM_USERNAME
-  const limit = parseInt(process.env.OWN_REELS_LIMIT ?? '10', 10)
+  const limit = parseInt(process.env.OWN_REELS_LIMIT ?? '30', 10)
 
   if (!username) {
     return NextResponse.json({ error: 'OWN_INSTAGRAM_USERNAME not set' }, { status: 500 })

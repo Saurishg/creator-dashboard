@@ -151,12 +151,17 @@ ${reelsText}${isLastBatch ? competitorSummary : ''}`,
 
 // ── Playwright scraper ────────────────────────────────────────────────────────
 
+// Playwright visits each post individually (~3-5s each) so cap at 40 posts to stay within timeout.
+// Larger limits are handled by the Apify fallback in scrapeAndSaveProfile.
+const PLAYWRIGHT_MAX = 40
+
 async function scrapeWithPlaywright(handle: string, limit: number): Promise<{ posts: ApifyPost[]; followersCount: number }> {
   const scriptPath = path.join(process.cwd(), 'scripts', 'playwright-ig-scrape.py')
+  const playwrightLimit = Math.min(limit, PLAYWRIGHT_MAX)
   try {
     const { stdout, stderr } = await execFileAsync(
-      'python3', [scriptPath, handle, String(limit)],
-      { timeout: 180_000, maxBuffer: 20 * 1024 * 1024 },
+      'python3', [scriptPath, handle, String(playwrightLimit)],
+      { timeout: 240_000, maxBuffer: 20 * 1024 * 1024 },
     )
     if (stderr) console.error(`[playwright-scrape] stderr for @${handle}:`, stderr.slice(0, 500))
     const raw = JSON.parse(stdout)

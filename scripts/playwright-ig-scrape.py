@@ -198,7 +198,8 @@ def scrape_profile(ctx, username, max_posts):
     prof_page.goto(f'https://www.instagram.com/{username}/', wait_until='load', timeout=60000)
     prof_page.wait_for_timeout(4000)
     sys.stderr.write(f'Follower count for @{username}: {follower_count}\n')
-    shortcodes = get_dom_shortcodes(prof_page, max_scroll=max(3, max_posts // 4))
+    # Instagram loads ~12 posts per scroll; cap at 25 scrolls to stay within process timeout.
+    shortcodes = get_dom_shortcodes(prof_page, max_scroll=min(25, max(8, max_posts // 3)))
     prof_page.close()
     sys.stderr.write(f'Found {len(shortcodes)} shortcodes on profile\n')
 
@@ -209,7 +210,7 @@ def scrape_profile(ctx, username, max_posts):
         try:
             url = f'https://www.instagram.com/p/{sc}/'
             post_page.goto(url, wait_until='load', timeout=60000)
-            post_page.wait_for_timeout(2000)
+            post_page.wait_for_timeout(800)
             html = post_page.content()
             relay_post = extract_post_from_relay(html, sc)
             if relay_post:
