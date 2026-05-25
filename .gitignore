@@ -34,3 +34,16 @@ agentdb.rvf.lock
 
 # Instagram session cookies — live credentials, never commit
 scripts/.ig-cookies.json
+
+# Ruflo runtime state (daemon, memory, swarm) — local-only
+.claude-flow/daemon.pid
+.claude-flow/daemon-state.json
+.claude-flow/metrics/
+.claude-flow/swarm/
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+.claude-flow/neural/
+.swarm/
+.claude/memory.db
+.claude/worktrees/
