@@ -186,7 +186,9 @@ export function computeStats(reels: DashboardReel[]): DashboardStats {
   const avgViews      = Math.round(totalViews / totalReels)
   const engRate       = totalViews > 0
     ? parseFloat((((totalLikes + totalComments) / totalViews) * 100).toFixed(1))
-    : 0
+    : totalReels > 0
+      ? parseFloat(((totalLikes + totalComments) / totalReels).toFixed(1))
+      : 0
 
   return {
     totalReels,

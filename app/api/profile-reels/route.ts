@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 import { scrapeInstagramSync, type ApifyPost } from '@/lib/apify'
 import { transformReels, computeStats } from '@/lib/transform'
+import { readCache } from '@/lib/cache'
 import { requireApiAuth } from '@/lib/auth'
+
+function isPaymentError(err: unknown): boolean {
+  return err instanceof Error && err.message.includes('402')
+}
 
 export async function GET(req: Request) {
   const auth = requireApiAuth(req)
@@ -32,7 +37,13 @@ export async function GET(req: Request) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[profile-reels]', message)
 
-    // Return a clear error so the frontend can fall back to dummy data
+    // On Apify credit exhaustion serve cached data so the dashboard stays usable
+    if (isPaymentError(err)) {
+      const cached = readCache<{ reels: unknown[]; stats: unknown; scrapedAt: string }>('profile-reels.json')
+      if (cached) return NextResponse.json({ ...cached, fromCache: true })
+      return NextResponse.json({ reels: [], stats: null, fromCache: true, error: 'Apify credit exhausted — no cache available' })
+    }
+
     return NextResponse.json({ error: message }, { status: 502 })
   }
 }

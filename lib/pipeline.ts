@@ -200,15 +200,25 @@ export async function scrapeTranscribeAnalyseCompetitors(
     onProgress?.('Using pre-scraped posts…', 5)
   } else {
     onProgress?.('Scraping competitor reels from Instagram…', 5)
-    const perHandle = await Promise.all(handles.map((h) => scrapeWithPlaywright(h, 10)))
-    posts = perHandle.flatMap((r) => r.posts)
-
-    if (posts.length === 0 && apifyTokenValid()) {
+    const COMP_LIMIT = 30
+    if (process.env.SCRAPER === 'free') {
+      // Free path: instaloader (→ playwright fallback) via scrapeInstagramSync
       const directUrls = handles.map((h) => `https://www.instagram.com/${h}/`)
       posts = await scrapeInstagramSync<ApifyPost>(
-        { directUrls, resultsType: 'posts', resultsLimit: 10 },
-        180,
+        { directUrls, resultsType: 'posts', resultsLimit: COMP_LIMIT },
+        600,
       )
+    } else {
+      const perHandle = await Promise.all(handles.map((h) => scrapeWithPlaywright(h, COMP_LIMIT)))
+      posts = perHandle.flatMap((r) => r.posts)
+
+      if (posts.length === 0 && apifyTokenValid()) {
+        const directUrls = handles.map((h) => `https://www.instagram.com/${h}/`)
+        posts = await scrapeInstagramSync<ApifyPost>(
+          { directUrls, resultsType: 'posts', resultsLimit: COMP_LIMIT },
+          180,
+        )
+      }
     }
   }
 
@@ -327,13 +337,22 @@ ${reelsText}`,
 }
 
 export async function scrapeAndSaveProfile(username: string, limit = 10) {
-  let { posts } = await scrapeWithPlaywright(username, limit)
+  let posts: ApifyPost[] = []
 
-  if (posts.length === 0 && apifyTokenValid()) {
+  if (process.env.SCRAPER === 'free') {
+    // Free path: bulk-session scraper inside scrapeInstagramSync handles 1000+ posts
     posts = await scrapeInstagramSync<ApifyPost>(
       { directUrls: [`https://www.instagram.com/${username}/`], resultsType: 'posts', resultsLimit: limit },
-      180,
+      900,
     )
+  } else {
+    posts = (await scrapeWithPlaywright(username, limit)).posts
+    if (posts.length === 0 && apifyTokenValid()) {
+      posts = await scrapeInstagramSync<ApifyPost>(
+        { directUrls: [`https://www.instagram.com/${username}/`], resultsType: 'posts', resultsLimit: limit },
+        180,
+      )
+    }
   }
 
   const reels = transformReels(posts)
@@ -346,21 +365,36 @@ export async function scrapeAndSaveProfile(username: string, limit = 10) {
 export async function scrapeAndSaveCompetitors(handles: string[]) {
   const allPosts: ApifyPost[] = []
   const followersByHandle = new Map<string, number>()
-  for (const handle of handles) {
-    let { posts: handlePosts, followersCount } = await scrapeWithPlaywright(handle, 20)
-    followersByHandle.set(handle.toLowerCase(), followersCount)
 
-    if (handlePosts.length === 0 && apifyTokenValid()) {
-      try {
-        handlePosts = await scrapeInstagramSync<ApifyPost>(
-          { directUrls: [`https://www.instagram.com/${handle}/`], resultsType: 'posts', resultsLimit: 8 },
-          120,
-        )
-      } catch { /* account blocked or private — continue */ }
+  if (process.env.SCRAPER === 'free') {
+    // Free path: one bulk fetch per handle via scrapeInstagramSync (which stamps ownerFollowersCount on each post)
+    for (const handle of handles) {
+      const handlePosts = await scrapeInstagramSync<ApifyPost>(
+        { directUrls: [`https://www.instagram.com/${handle}/`], resultsType: 'posts', resultsLimit: 30 },
+        900,
+      )
+      const fc = handlePosts[0]?.ownerFollowersCount ?? 0
+      followersByHandle.set(handle.toLowerCase(), fc)
+      allPosts.push(...handlePosts)
     }
+  } else {
+    for (const handle of handles) {
+      let { posts: handlePosts, followersCount } = await scrapeWithPlaywright(handle, 20)
+      followersByHandle.set(handle.toLowerCase(), followersCount)
 
-    allPosts.push(...handlePosts)
+      if (handlePosts.length === 0 && apifyTokenValid()) {
+        try {
+          handlePosts = await scrapeInstagramSync<ApifyPost>(
+            { directUrls: [`https://www.instagram.com/${handle}/`], resultsType: 'posts', resultsLimit: 8 },
+            120,
+          )
+        } catch { /* account blocked or private — continue */ }
+      }
+
+      allPosts.push(...handlePosts)
+    }
   }
+
   const posts = allPosts
   const byOwner = new Map<string, ApifyPost[]>()
   for (const post of posts) {

@@ -11,6 +11,7 @@ const navMain = [
   { icon: '💡', label: 'Reel Ideas',     href: '/reel-ideas',     badge: null },
   { icon: '🎵', label: 'Trending Audio', href: '/trending-audio', badge: null },
   { icon: '🧠', label: 'Content DNA',    href: '/analysis',       badge: null },
+  { icon: '🛠️', label: 'Fixes',          href: '/fixes',          badge: null },
 ]
 
 const navAccount = [

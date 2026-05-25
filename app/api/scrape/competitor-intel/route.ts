@@ -46,7 +46,7 @@ export async function POST(req: Request) {
           username:       handle,
           fullName:       ownerPosts[0]?.ownerFullName ?? null,
           biography:      null,
-          followersCount: 0,
+          followersCount: ownerPosts[0]?.ownerFollowersCount ?? 0,
           followingCount: 0,
           postsCount:     0,
           profilePicUrl:  null,
@@ -64,6 +64,9 @@ export async function POST(req: Request) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[scrape/competitor-intel]', message)
+    if (err instanceof Error && err.message.includes('402')) {
+      return NextResponse.json({ competitors: [], trendingAudio: [], error: 'Apify credit exhausted' })
+    }
     return NextResponse.json({ error: message }, { status: 502 })
   }
 }

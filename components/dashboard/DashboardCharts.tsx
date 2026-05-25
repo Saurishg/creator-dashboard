@@ -15,14 +15,14 @@ function formatViews(n: number): string {
 }
 
 function engagement(r: DashboardReel): number {
-  if (r.viewsRaw === 0) return 0
-  return parseFloat((((r.likesRaw + r.commentsRaw) / r.viewsRaw) * 100).toFixed(2))
+  if (r.viewsRaw > 0) return parseFloat((((r.likesRaw + r.commentsRaw) / r.viewsRaw) * 100).toFixed(2))
+  return 0
 }
 
 function EngagementTrend({ reels }: { reels: DashboardReel[] }) {
-  // oldest → newest along the X axis so the line reads left-to-right
+  // Use posts with views for engagement %; oldest → newest
   const data = [...reels]
-    .filter((r) => r.viewsRaw > 0)
+    .filter((r) => r.viewsRaw > 0 && r.dateIso)
     .sort((a, b) => {
       const at = a.dateIso ? new Date(a.dateIso).getTime() : 0
       const bt = b.dateIso ? new Date(b.dateIso).getTime() : 0
@@ -45,7 +45,7 @@ function EngagementTrend({ reels }: { reels: DashboardReel[] }) {
 
   return (
     <ChartShell title="📈 Engagement Trend" subtitle={`${data.length} reels · likes + comments / views`}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={220} minWidth={0} minHeight={0}>
         <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid stroke="#1c2a47" strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -64,12 +64,13 @@ function EngagementTrend({ reels }: { reels: DashboardReel[] }) {
 
 function TopReels({ reels }: { reels: DashboardReel[] }) {
   const data = [...reels]
-    .sort((a, b) => b.viewsRaw - a.viewsRaw)
+    .sort((a, b) => (b.viewsRaw || b.likesRaw) - (a.viewsRaw || a.likesRaw))
     .slice(0, 5)
     .map((r) => ({
       name:  r.title.replace(/^"|"$/g, '').slice(0, 28) + (r.title.length > 28 ? '…' : ''),
-      views: r.viewsRaw,
+      views: r.viewsRaw || r.likesRaw,
       isBest: r.isBest,
+      label: r.viewsRaw > 0 ? 'views' : 'likes',
     }))
 
   if (data.length === 0) {
@@ -82,7 +83,7 @@ function TopReels({ reels }: { reels: DashboardReel[] }) {
 
   return (
     <ChartShell title="🏆 Top Reels by Views" subtitle={`Top ${data.length} of ${reels.length}`}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={220} minWidth={0} minHeight={0}>
         <BarChart data={data} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="#1c2a47" strokeDasharray="3 3" horizontal={false} />
           <XAxis type="number" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={formatViews} />
@@ -112,7 +113,7 @@ function ChartShell({ title, subtitle, children }: { title: string; subtitle: st
     >
       <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>{title}</div>
       <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: 14 }}>{subtitle}</div>
-      <div style={{ height: 220 }}>{children}</div>
+      <div style={{ height: 220, minWidth: 0, minHeight: 220 }}>{children}</div>
     </motion.div>
   )
 }

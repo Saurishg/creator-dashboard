@@ -20,6 +20,10 @@ function isTimeoutError(err: unknown): boolean {
   )
 }
 
+function isPaymentError(err: unknown): boolean {
+  return err instanceof Error && err.message.includes('402')
+}
+
 export async function GET(req: Request) {
   const auth = requireApiAuth(req)
   if (auth) return auth
@@ -58,7 +62,7 @@ export async function GET(req: Request) {
           username:       handle,
           fullName:       ownerPosts[0]?.ownerFullName ?? null,
           biography:      null,
-          followersCount: 0,
+          followersCount: ownerPosts[0]?.ownerFollowersCount ?? 0,
           followingCount: 0,
           postsCount:     0,
           profilePicUrl:  null,
@@ -79,8 +83,8 @@ export async function GET(req: Request) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[competitor-intel]', message)
 
-    // Timeouts are non-fatal — return empty so the UI shows demo data cleanly
-    if (isTimeoutError(err)) {
+    // Timeouts and payment errors are non-fatal — return empty so UI shows demo data
+    if (isTimeoutError(err) || isPaymentError(err)) {
       return NextResponse.json({ competitors: [], trendingAudio: [] })
     }
 

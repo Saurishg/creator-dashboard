@@ -29,7 +29,7 @@ function PostingTimeAnalysis({ reels }: { reels: DashboardReel[] }) {
       <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>⏰ Best Posting Time</div>
       <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>Average views by day of week</div>
       <div style={{ height: 180 }}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={180}>
           <BarChart data={chartData}>
             <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
             <YAxis hide />
@@ -60,7 +60,7 @@ function GrowthChart({ reels }: { reels: DashboardReel[] }) {
       <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>📈 Views Over Time</div>
       <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>Performance trend across your recent reels</div>
       <div style={{ height: 200 }}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={200}>
           <BarChart data={chartData}>
             <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
