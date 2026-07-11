@@ -36,7 +36,7 @@ for (const handle of handles) {
   try {
     const { stdout, stderr } = await execFileAsync(
       'python3', [scraperScript, handle, '20'],
-      { timeout: 120_000, maxBuffer: 10 * 1024 * 1024 },
+      { timeout: 300_000, maxBuffer: 10 * 1024 * 1024 },
     )
     if (stderr) process.stderr.write(stderr)
     const parsed = JSON.parse(stdout.trim())
