@@ -12,12 +12,14 @@ import TrendingAudio from '@/components/dashboard/TrendingAudio'
 import RecentReels from '@/components/dashboard/RecentReels'
 import DashboardFilters, { DEFAULT_FILTERS, type FilterState } from '@/components/dashboard/DashboardFilters'
 import DashboardCharts from '@/components/dashboard/DashboardCharts'
+import ContentDecisionBoard from '@/components/dashboard/ContentDecisionBoard'
 import ExportButtons from '@/components/dashboard/ExportButtons'
 import LiveRefreshBar from '@/components/dashboard/LiveRefreshBar'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useLiveRefresh } from '@/hooks/useLiveRefresh'
 import { useDashboardPrefs } from '@/hooks/useDashboardPrefs'
 import type { DashboardReel, DashboardCompetitor, DashboardStats, DashboardAudio } from '@/lib/transform'
+import { computeStats, parseDateIso } from '@/lib/transform'
 import type { AnalysisResult } from '@/lib/analysis-types'
 
 interface Props {
@@ -27,6 +29,11 @@ interface Props {
   competitors: DashboardCompetitor[]
   trendingAudio: DashboardAudio[]
   analysis: AnalysisResult | null
+  planningHealth: {
+    calendarPosts: number | null
+    calendarGeneratedAt: string | null
+    competitorAnalysedAt: string | null
+  }
 }
 
 const RANGE_DAYS: Record<FilterState['range'], number | null> = {
@@ -44,8 +51,8 @@ function applyFilters(all: DashboardReel[], filters: FilterState): DashboardReel
   let out = all.filter((r) => {
     if (filters.type !== 'All' && r.type !== filters.type) return false
     if (cutoff && r.dateIso) {
-      const t = new Date(r.dateIso).getTime()
-      if (Number.isFinite(t) && t < cutoff) return false
+      const t = parseDateIso(r.dateIso)
+      if (t != null && t < cutoff) return false
     }
     if (q && !r.title.toLowerCase().includes(q) && !r.type.toLowerCase().includes(q)) return false
     return true
@@ -58,8 +65,8 @@ function applyFilters(all: DashboardReel[], filters: FilterState): DashboardReel
     out = [...out].sort((a, b) => eng(b) - eng(a))
   } else {
     out = [...out].sort((a, b) => {
-      const at = a.dateIso ? new Date(a.dateIso).getTime() : 0
-      const bt = b.dateIso ? new Date(b.dateIso).getTime() : 0
+      const at = parseDateIso(a.dateIso) ?? 0
+      const bt = parseDateIso(b.dateIso) ?? 0
       return bt - at
     })
   }
@@ -76,7 +83,7 @@ function searchAcross(query: string, comps: DashboardCompetitor[], audio: Dashbo
   }
 }
 
-export default function DashboardShell({ username, reels, stats, competitors, trendingAudio, analysis }: Props) {
+export default function DashboardShell({ username, reels, stats, competitors, trendingAudio, analysis, planningHealth }: Props) {
   const isMobile = useIsMobile()
   const { prefs } = useDashboardPrefs()
 
@@ -101,6 +108,10 @@ export default function DashboardShell({ username, reels, stats, competitors, tr
     () => searchAcross(filters.query, live.competitors, live.trendingAudio),
     [filters.query, live.competitors, live.trendingAudio],
   )
+  const liveStats = useMemo(
+    () => live.reels.length ? computeStats(live.reels) : (live.stats ?? stats),
+    [live.reels, live.stats, stats],
+  )
 
   return (
     <>
@@ -123,12 +134,14 @@ export default function DashboardShell({ username, reels, stats, competitors, tr
 
       <InsightBanner analysis={live.analysis ?? analysis} />
       <PerformanceAlerts reels={filteredReels} />
-      <QuickStats liveStats={live.stats ?? stats ?? undefined} />
+      <QuickStats liveStats={liveStats ?? undefined} />
+
+      <ContentDecisionBoard reels={filteredReels} analysis={live.analysis ?? analysis} planningHealth={planningHealth} />
 
       <DashboardCharts reels={filteredReels} />
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.3fr 1fr', gap: 20, marginBottom: 20 }}>
-        <CreatorScore analysis={live.analysis ?? analysis} stats={live.stats ?? stats} />
+        <CreatorScore analysis={live.analysis ?? analysis} stats={liveStats} />
         <CompetitorIntel competitors={filteredCompetitorsAndAudio.competitors} />
       </div>
 

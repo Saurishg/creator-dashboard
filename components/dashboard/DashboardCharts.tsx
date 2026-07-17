@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Cell,
 } from 'recharts'
 import type { DashboardReel } from '@/lib/transform'
+import { parseDateIso } from '@/lib/transform'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
 function formatViews(n: number): string {
@@ -22,10 +23,10 @@ function engagement(r: DashboardReel): number {
 function EngagementTrend({ reels }: { reels: DashboardReel[] }) {
   // Use posts with views for engagement %; oldest → newest
   const data = [...reels]
-    .filter((r) => r.viewsRaw > 0 && r.dateIso)
+    .filter((r) => r.viewsRaw > 0 && parseDateIso(r.dateIso) != null)
     .sort((a, b) => {
-      const at = a.dateIso ? new Date(a.dateIso).getTime() : 0
-      const bt = b.dateIso ? new Date(b.dateIso).getTime() : 0
+      const at = parseDateIso(a.dateIso) ?? 0
+      const bt = parseDateIso(b.dateIso) ?? 0
       return at - bt
     })
     .map((r, i) => ({

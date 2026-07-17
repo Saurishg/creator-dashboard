@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import type { AnalysisResult, CompetitorAnalysisResult } from '@/lib/analysis-types'
 import type { DashboardReel } from '@/lib/transform'
+import { parseDateIso } from '@/lib/transform'
 
 const FOLLOWER_STORAGE_KEY = 'follower-history-v1'
 
@@ -14,9 +15,9 @@ const HOURS = Array.from({length:24},(_,i)=>i)
 function PostingTimeAnalysis({ reels }: { reels: DashboardReel[] }) {
   const dayData = DAYS.map(d => ({ day: d, views: 0, count: 0 }))
   reels.forEach((r) => {
-    if (!r.dateIso) return
-    const d = new Date(r.dateIso)
-    if (isNaN(d.getTime())) return
+    const ms = parseDateIso(r.dateIso)
+    if (ms == null) return
+    const d = new Date(ms)
     const idx = d.getDay()
     dayData[idx].views += r.viewsRaw
     dayData[idx].count++
@@ -43,17 +44,22 @@ function PostingTimeAnalysis({ reels }: { reels: DashboardReel[] }) {
         </ResponsiveContainer>
       </div>
       <div style={{ marginTop: 12, fontSize: 12, color: '#a5b4fc', background: 'rgba(99,102,241,.08)', padding: '8px 12px', borderRadius: 8 }}>
-        💡 Best day: <strong>{chartData.sort((a,b) => b.avgViews - a.avgViews)[0]?.name || 'N/A'}</strong> — post between 6-8 PM for maximum reach
+        💡 Best day: <strong>{chartData.sort((a,b) => b.avgViews - a.avgViews)[0]?.name || 'N/A'}</strong> — highest average views in your data
       </div>
     </div>
   )
 }
 
 function GrowthChart({ reels }: { reels: DashboardReel[] }) {
-  const chartData = [...reels].reverse().map((r, i) => ({
-    name: `Reel ${i + 1}`,
-    views: r.viewsRaw,
-  }))
+  const chartData = [...reels]
+    .filter(r => r.viewsRaw > 0)
+    .sort((a, b) => (parseDateIso(a.dateIso) ?? 0) - (parseDateIso(b.dateIso) ?? 0))
+    .slice(-60)
+    .map(r => {
+      const ms = parseDateIso(r.dateIso)
+      const label = ms ? new Date(ms).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }) : '?'
+      return { name: label, views: r.viewsRaw }
+    })
 
   return (
     <div style={{ background: '#0f1629', border: '1px solid #1c2a47', borderRadius: 14, padding: 22, marginBottom: 20 }}>
@@ -76,9 +82,9 @@ function GrowthChart({ reels }: { reels: DashboardReel[] }) {
 function EngagementHeatmap({ reels }: { reels: DashboardReel[] }) {
   const cellMap = new Map<string, { views: number; count: number }>()
   reels.forEach((r) => {
-    if (!r.dateIso) return
-    const d = new Date(r.dateIso)
-    if (isNaN(d.getTime())) return
+    const ms = parseDateIso(r.dateIso)
+    if (ms == null) return
+    const d = new Date(ms)
     const key = `${DAYS[d.getDay()]}-${d.getHours()}`
     const cell = cellMap.get(key) ?? { views: 0, count: 0 }
     cell.views += r.viewsRaw
@@ -93,7 +99,7 @@ function EngagementHeatmap({ reels }: { reels: DashboardReel[] }) {
     })
   })
 
-  const maxVal = Math.max(...heatData.map(d => d.value))
+  const maxVal = Math.max(...heatData.map(d => d.value), 1)
 
   return (
     <div style={{ background: '#0f1629', border: '1px solid #1c2a47', borderRadius: 14, padding: 22, marginBottom: 20 }}>

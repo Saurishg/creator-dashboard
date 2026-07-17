@@ -102,7 +102,7 @@ function buildFixes(
     }
   }
 
-  // 4. Per-post fixes — specific reels with issues
+  // 4. Per-post fixes — specific reels with issues (only posts with view data)
   const posts: PostFix[] = []
   const breakdowns = analysis.breakdowns ?? []
   const videoReels = breakdowns.filter((b) => (b.views ?? 0) > 0)
@@ -113,6 +113,9 @@ function buildFixes(
     : 0
 
   for (const b of breakdowns) {
+    // Skip posts with 0 views — engagement data is unreliable (image/carousel posts)
+    if ((b.views ?? 0) === 0) continue
+
     const issues: string[] = []
     const cap = (b.caption ?? '').trim()
     const hookText = (b.hook ?? '').trim()
@@ -121,7 +124,7 @@ function buildFixes(
     if (!cap) issues.push('No caption')
     if (!hookText || hookText.length < 6) issues.push('Weak / missing hook')
     if (!ctaText || ctaText.length < 4) issues.push('No clear CTA')
-    if ((b.views ?? 0) > 0 && b.engagementScore < medianEng * 0.4) {
+    if (b.engagementScore < medianEng * 0.4) {
       issues.push(`Engagement ${b.engagementScore.toFixed(1)}% vs median ${medianEng.toFixed(1)}%`)
     }
     if (cap.length > 1500) issues.push('Caption too long (>1500 chars)')

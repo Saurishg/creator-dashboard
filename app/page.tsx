@@ -4,10 +4,11 @@ import { readConfig } from '@/lib/config'
 import { readCache } from '@/lib/cache'
 import DashboardShell from '@/components/DashboardShell'
 import type { DashboardReel, DashboardCompetitor, DashboardStats, DashboardAudio } from '@/lib/transform'
-import type { AnalysisResult } from '@/lib/analysis-types'
+import type { AnalysisResult, CompetitorAnalysisResult } from '@/lib/analysis-types'
 
 interface ProfileCache { reels: DashboardReel[]; stats: DashboardStats }
 interface CompetitorCache { competitors: DashboardCompetitor[]; trendingAudio: DashboardAudio[] }
+interface CalendarCache { posts?: unknown[]; generatedAt?: string }
 
 export default function Page() {
   const config = readConfig()
@@ -15,6 +16,8 @@ export default function Page() {
   const profileCache  = readCache<ProfileCache>('profile-reels.json')
   const compCache     = readCache<CompetitorCache>('competitor-intel.json')
   const analysisCache = readCache<AnalysisResult>('analysis.json')
+  const competitorAnalysis = readCache<CompetitorAnalysisResult>('competitor-analysis.json')
+  const calendarCache = readCache<CalendarCache>('calendar.json')
 
   return (
     <DashboardShell
@@ -24,6 +27,11 @@ export default function Page() {
       competitors={compCache?.competitors ?? []}
       trendingAudio={compCache?.trendingAudio ?? []}
       analysis={analysisCache ?? null}
+      planningHealth={{
+        calendarPosts: calendarCache?.posts?.length ?? null,
+        calendarGeneratedAt: calendarCache?.generatedAt ?? null,
+        competitorAnalysedAt: competitorAnalysis?.analysedAt ?? null,
+      }}
     />
   )
 }

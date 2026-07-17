@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { readCache } from '@/lib/cache'
 import { readConfig } from '@/lib/config'
-import type { DashboardReel, DashboardCompetitor, DashboardStats, DashboardAudio } from '@/lib/transform'
+import { computeStats, type DashboardReel, type DashboardCompetitor, type DashboardStats, type DashboardAudio } from '@/lib/transform'
 import type { AnalysisResult } from '@/lib/analysis-types'
 import { requireApiAuth } from '@/lib/auth'
 
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     username:      config?.username ?? null,
     reels:         profileCache?.reels ?? [],
-    stats:         profileCache?.stats ?? null,
+    stats:         profileCache?.reels?.length ? computeStats(profileCache.reels) : (profileCache?.stats ?? null),
     competitors:   compCache?.competitors ?? [],
     trendingAudio: compCache?.trendingAudio ?? [],
     analysis:      analysisCache ?? null,

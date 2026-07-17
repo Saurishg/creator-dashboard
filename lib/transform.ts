@@ -58,14 +58,41 @@ function formatNumber(n: number): string {
   return String(n)
 }
 
-function relativeDate(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
+/**
+ * Parse a timestamp that may be an ISO string, a Unix-seconds string, a
+ * Unix-millis string, or a numeric value. Returns null for unparseable input.
+ *
+ * The free Instagram scrapers (ig-bulk, ig-session, playwright) emit Unix
+ * seconds as strings (e.g. "1740657201"), while the instaloader scraper emits
+ * ISO strings. This helper handles both.
+ */
+export function parseDateIso(iso: string | number | null | undefined): number | null {
+  if (iso == null || iso === '') return null
+  let ms: number
+  if (typeof iso === 'number') {
+    ms = iso < 1e12 ? iso * 1000 : iso
+  } else if (/^\d+$/.test(iso.trim())) {
+    const n = Number(iso)
+    ms = n < 1e12 ? n * 1000 : n
+  } else {
+    ms = new Date(iso).getTime()
+  }
+  return Number.isFinite(ms) ? ms : null
+}
+
+function relativeDate(iso: string | number | null | undefined): string {
+  const ms = parseDateIso(iso)
+  if (ms == null) return ''
+  const diff = Date.now() - ms
+  if (diff < 0) return 'Today'
   const days = Math.floor(diff / 86_400_000)
   if (days === 0) return 'Today'
   if (days === 1) return 'Yesterday'
   if (days < 7)  return `${days} days ago`
   if (days < 14) return '1 week ago'
-  return `${Math.floor(days / 7)} weeks ago`
+  if (days < 60) return `${Math.floor(days / 7)} weeks ago`
+  if (days < 365) return `${Math.floor(days / 30)} months ago`
+  return `${Math.floor(days / 365)} year${days >= 730 ? 's' : ''} ago`
 }
 
 // Guess content type from caption keywords
@@ -160,16 +187,20 @@ function formatHour(h: number): string {
 }
 
 function computeBestPostingTime(reels: DashboardReel[]): string {
-  const buckets = new Map<string, number>()
+  const buckets = new Map<string, { sum: number; count: number }>()
   for (const reel of reels) {
-    if (!reel.dateIso) continue
-    const d = new Date(reel.dateIso)
-    if (isNaN(d.getTime())) continue
+    if (reel.viewsRaw === 0) continue
+    const ms = parseDateIso(reel.dateIso)
+    if (ms == null) continue
+    const d = new Date(ms)
     const key = `${d.getDay()}_${d.getHours()}`
-    buckets.set(key, (buckets.get(key) ?? 0) + reel.viewsRaw)
+    const prev = buckets.get(key) ?? { sum: 0, count: 0 }
+    buckets.set(key, { sum: prev.sum + reel.viewsRaw, count: prev.count + 1 })
   }
   if (buckets.size === 0) return 'Tue 7PM'
-  const best = Array.from(buckets.entries()).reduce((a, b) => (b[1] > a[1] ? b : a))
+  const best = Array.from(buckets.entries()).reduce((a, b) =>
+    b[1].sum / b[1].count > a[1].sum / a[1].count ? b : a
+  )
   const [dayStr, hourStr] = best[0].split('_')
   return `${DAY_NAMES[Number(dayStr)]} ${formatHour(Number(hourStr))}`
 }
@@ -180,10 +211,15 @@ export function computeStats(reels: DashboardReel[]): DashboardStats {
     return { totalReels: 0, avgViews: 0, bestPostingTime: 'Tue 7PM', engagementRate: 0 }
   }
 
-  const totalViews    = reels.reduce((s, r) => s + r.viewsRaw, 0)
-  const totalLikes    = reels.reduce((s, r) => s + (r.likesRaw ?? 0), 0)
-  const totalComments = reels.reduce((s, r) => s + (r.commentsRaw ?? 0), 0)
-  const avgViews      = Math.round(totalViews / totalReels)
+  // Instagram scrapers frequently omit views for image posts and some reels.
+  // Do not combine their likes/comments with a view-based denominator.
+  const videoReels    = reels.filter(r => r.viewsRaw > 0)
+  const totalViews    = videoReels.reduce((s, r) => s + r.viewsRaw, 0)
+  const totalLikes    = videoReels.reduce((s, r) => s + (r.likesRaw ?? 0), 0)
+  const totalComments = videoReels.reduce((s, r) => s + (r.commentsRaw ?? 0), 0)
+  const avgViews      = videoReels.length > 0
+    ? Math.round(videoReels.reduce((s, r) => s + r.viewsRaw, 0) / videoReels.length)
+    : 0
   const engRate       = totalViews > 0
     ? parseFloat((((totalLikes + totalComments) / totalViews) * 100).toFixed(1))
     : totalReels > 0
